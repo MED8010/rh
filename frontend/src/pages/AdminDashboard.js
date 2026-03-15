@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../services/api';
-import { Pie, Bar } from 'react-chartjs-2';
+import { Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -36,7 +36,9 @@ const AdminDashboard = () => {
     service: '',
     uap: '',
     mois: new Date().getMonth() + 1,
-    annee: new Date().getFullYear()
+    annee: new Date().getFullYear(),
+    date_debut: new Date().toISOString().split('T')[0],
+    date_fin: new Date().toISOString().split('T')[0]
   });
 
   useEffect(() => {
@@ -48,27 +50,22 @@ const AdminDashboard = () => {
     loadStructures();
   }, []);
 
-  useEffect(() => {
-    loadStats();
-  }, [filters]);
-
-  const loadStructures = async () => {
-    try {
-      const [sRes, uRes] = await Promise.all([
-        apiClient.get('/structure/services'),
-        apiClient.get('/structure/uaps')
-      ]);
-      setServices(sRes.data);
-      setUaps(uRes.data);
-    } catch (error) {
-      console.error('Erreur structures:', error);
-    }
-  };
-
-  const loadStats = async () => {
+  const loadStats = React.useCallback(async () => {
     try {
       setLoading(true);
-      const query = `?service=${filters.service}&uap=${filters.uap}&mois=${filters.mois}&annee=${filters.annee}`;
+      const params = new URLSearchParams();
+      if (filters.service) params.append('service', filters.service);
+      if (filters.uap) params.append('uap', filters.uap);
+      
+      if (filters.date_debut && filters.date_fin) {
+        params.append('date_debut', filters.date_debut);
+        params.append('date_fin', filters.date_fin);
+      } else {
+        params.append('mois', filters.mois);
+        params.append('annee', filters.annee);
+      }
+
+      const query = `?${params.toString()}`;
 
       const [employeStats, timeS, analyticsS] = await Promise.all([
         apiClient.get(`/employes/stats${query}`),
@@ -83,21 +80,58 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
+  }, [filters]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  const loadStructures = async () => {
+    try {
+      const [sRes, uRes] = await Promise.all([
+        apiClient.get('/structure/services'),
+        apiClient.get('/structure/uaps')
+      ]);
+      setServices(sRes.data);
+      setUaps(uRes.data);
+    } catch (error) {
+      console.error('Erreur structures:', error);
+    }
   };
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+    // Reset daily filter if changing month/year
+    const newFilters = { ...filters, [name]: value };
+    if (name === 'mois' || name === 'annee') {
+       newFilters.date_debut = '';
+       newFilters.date_fin = '';
+    } else if (name === 'date_debut' || name === 'date_fin') {
+       newFilters.mois = '';
+       newFilters.annee = '';
+    }
+    setFilters(newFilters);
+  };
+
+  const handleToday = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setFilters(prev => ({
+      ...prev,
+      date_debut: today,
+      date_fin: today,
+      mois: '',
+      annee: ''
+    }));
   };
 
   const formatDate = (d) => d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const formatTime = (d) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
   const presenceData = {
-    labels: ['Présents', 'Retards', 'Absents'],
+    labels: ['À l\'heure', 'Retards', 'Absents'],
     datasets: [{
       data: [
-        timeStats?.presentCount || 0,
+        timeStats?.onTimeCount || 0,
         timeStats?.retardCount || 0,
         timeStats?.absenceCount || 0,
       ],
@@ -137,22 +171,22 @@ const AdminDashboard = () => {
     },
     {
       icon: '✅', label: 'Présents', value: timeStats?.presentCount || 0,
-      subtitle: `Taux: ${timeStats?.tauxPresence || (100 - (timeStats?.tauxAbsenteisme || 0) - (timeStats?.tauxRetard || 0)).toFixed(1)}%`, variant: 'kpi-success',
+      subtitle: `Taux: ${timeStats?.tauxPresence ?? 0}%`, variant: 'kpi-success',
     },
     {
       icon: '⚠️', label: 'Retards', value: timeStats?.retardCount || 0,
-      subtitle: `Taux: ${timeStats?.tauxRetard || 0}%`, variant: 'kpi-warning',
+      subtitle: `Taux: ${timeStats?.tauxRetard ?? 0}%`, variant: 'kpi-warning',
     },
     {
       icon: '❌', label: 'Absents', value: timeStats?.absenceCount || 0,
-      subtitle: `Taux: ${timeStats?.tauxAbsenteisme || 0}%`, variant: 'kpi-danger',
+      subtitle: `Taux: ${timeStats?.tauxAbsenteisme ?? 0}%`, variant: 'kpi-danger',
     },
     {
-      icon: '💰', label: 'Masse Salariale', value: `${(salaireStats?.masse_salariale || 0).toFixed(0)} DT`,
-      subtitle: 'période sélectionnée', variant: 'kpi-accent',
+      icon: '💰', label: 'Masse Salariale', value: `${(salaireStats?.masseSalariale || 0).toFixed(0)} DT`,
+      subtitle: 'période sélectionnée', variant: 'kpi-primary',
     },
     {
-      icon: '📊', label: 'Salaire Moyen', value: `${(salaireStats?.salaire_moyen || 0).toFixed(0)} DT`,
+      icon: '📊', label: 'Salaire Moyen', value: `${(salaireStats?.salaireMoyen || 0).toFixed(0)} DT`,
       subtitle: 'par employé', variant: 'kpi-purple',
     },
     {
@@ -207,8 +241,20 @@ const AdminDashboard = () => {
             </select>
           </div>
           <div className="filter-group">
-            <label>Mois</label>
+            <label>Période</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+               <input type="date" name="date_debut" value={filters.date_debut} onChange={handleFilterChange} className="date-input" />
+               <span style={{ alignSelf: 'center', color: 'var(--text-muted)' }}>au</span>
+               <input type="date" name="date_fin" value={filters.date_fin} onChange={handleFilterChange} className="date-input" />
+               <button onClick={handleToday} className="btn-today" style={{ background: 'var(--primary-glow)', border: '1px solid var(--primary)', color: 'var(--primary)', padding: '0 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                 Aujourd'hui
+               </button>
+            </div>
+          </div>
+          <div className="filter-group">
+            <label>Mois (Optionnel)</label>
             <select name="mois" value={filters.mois} onChange={handleFilterChange}>
+              <option value="">-- Sélectionner --</option>
               {Array.from({ length: 12 }, (_, i) => (
                 <option key={i + 1} value={i + 1}>
                   {new Date(0, i).toLocaleString('fr-FR', { month: 'long' })}
@@ -217,13 +263,30 @@ const AdminDashboard = () => {
             </select>
           </div>
           <div className="filter-group">
-            <label>Année</label>
+            <label>Année (Optionnel)</label>
             <select name="annee" value={filters.annee} onChange={handleFilterChange}>
+              <option value="">--</option>
               {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
         </div>
       </div>
+      
+      <style>{`
+        .date-input {
+          background: var(--bg-hover) !important;
+          border: 1px solid var(--border) !important;
+          color: var(--text-primary) !important;
+          padding: 8px 12px !important;
+          border-radius: 8px !important;
+          font-size: 13px !important;
+          outline: none !important;
+        }
+        .btn-today:hover {
+          background: var(--primary) !important;
+          color: white !important;
+        }
+      `}</style>
 
       {loading && <div className="loading-overlay"><div className="spinner"></div></div>}
 

@@ -21,21 +21,34 @@ const TimeDisciplineDashboard = () => {
   });
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [services, setServices] = useState([]);
+  const [uaps, setUaps] = useState([]);
+  const [selectedService, setSelectedService] = useState('');
+  const [selectedUap, setSelectedUap] = useState('');
 
-  useEffect(() => {
-    loadMetrics();
-  }, [dateRange]);
+  const loadStructures = React.useCallback(async () => {
+    try {
+      const [servRes, uapRes] = await Promise.all([
+        apiClient.get('/structure/services'),
+        apiClient.get('/structure/uaps'),
+      ]);
+      setServices(servRes.data);
+      setUaps(uapRes.data);
+    } catch (error) {
+      console.error('Erreur chargement structures:', error);
+    }
+  }, []);
 
-  const loadMetrics = async () => {
+  const loadMetrics = React.useCallback(async () => {
     try {
       setLoading(true);
-      const startDate = dateRange.start.toISOString().split('T')[0];
-      const endDate = dateRange.end.toISOString().split('T')[0];
 
       const response = await apiClient.get('/pointages/stats/time-discipline', {
         params: {
           date_debut: dateRange.start.toISOString(),
-          date_fin: dateRange.end.toISOString()
+          date_fin: dateRange.end.toISOString(),
+          service: selectedService || undefined,
+          uap: selectedUap || undefined
         }
       });
       setMetrics(response.data);
@@ -44,7 +57,15 @@ const TimeDisciplineDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange, selectedService, selectedUap]);
+
+  useEffect(() => {
+    loadStructures();
+  }, [loadStructures]);
+
+  useEffect(() => {
+    loadMetrics();
+  }, [loadMetrics]);
 
   const handleDateChange = (type, value) => {
     const newDate = new Date(value);
@@ -69,65 +90,141 @@ const TimeDisciplineDashboard = () => {
           <h1>📊 Temps & Discipline</h1>
           <p className="welcome-text">Analyse des indicateurs de temps et discipline</p>
         </div>
-        <div style={{ textAlign: 'right', fontSize: '14px', color: '#999' }}>
-          <div>
-            <label style={{ marginRight: '10px' }}>Du:</label>
-            <input
-              type="date"
-              value={dateRange.start.toISOString().split('T')[0]}
-              onChange={(e) => handleDateChange('start', e.target.value)}
-              style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
-            />
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Structures Filters */}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <select 
+              value={selectedService} 
+              onChange={(e) => setSelectedService(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13px' }}
+            >
+              <option value="">Tous les Services</option>
+              {services.map(s => <option key={s._id} value={s._id}>{s.nom_service}</option>)}
+            </select>
+            <select 
+              value={selectedUap} 
+              onChange={(e) => setSelectedUap(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13px' }}
+            >
+              <option value="">Toutes les UAPs</option>
+              {uaps.map(u => <option key={u._id} value={u._id}>{u.nom_uap}</option>)}
+            </select>
           </div>
-          <div style={{ marginTop: '10px' }}>
-            <label style={{ marginRight: '10px' }}>Au:</label>
-            <input
-              type="date"
-              value={dateRange.end.toISOString().split('T')[0]}
-              onChange={(e) => handleDateChange('end', e.target.value)}
-              style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
-            />
+
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Du:</label>
+              <input
+                type="date"
+                value={dateRange.start.toISOString().split('T')[0]}
+                onChange={(e) => handleDateChange('start', e.target.value)}
+                style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13px' }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>Au:</label>
+              <input
+                type="date"
+                value={dateRange.end.toISOString().split('T')[0]}
+                onChange={(e) => handleDateChange('end', e.target.value)}
+                style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13px' }}
+              />
+            </div>
           </div>
         </div>
       </div>
 
 
-      <div className="section-card" style={{ marginTop: '24px', display: 'flex', alignItems: 'center', gap: '40px' }}>
+      <div className="section-card" style={{ 
+        marginTop: '24px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '40px',
+        background: 'var(--bg-card)',
+        padding: '30px',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border)',
+        boxShadow: 'var(--shadow-sm)'
+      }}>
         <div style={{ flex: 1 }}>
-          <h3>📊 Répartition des Absences</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginTop: '8px' }}>
-            Visualisation de la proportion entre absences justifiées et non justifiées sur la période sélectionnée.
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+            <span style={{ fontSize: '24px' }}>📊</span>
+            <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 700 }}>Répartition des Absences</h3>
+          </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.5' }}>
+            Analyse comparative entre les absences justifiées (congés, maladies) et les absences non justifiées.
           </p>
-          <div style={{ marginTop: '20px', display: 'flex', gap: '20px' }}>
-            <div style={{ padding: '15px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', flex: 1 }}>
-              <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--success)', textTransform: 'uppercase' }}>Justifiées</p>
-              <p style={{ fontSize: '24px', fontWeight: 800 }}>{metrics.absences.justifiees}</p>
+          
+          <div style={{ marginTop: '24px', display: 'flex', gap: '16px' }}>
+            <div style={{ 
+              padding: '20px', 
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%)', 
+              borderRadius: '16px', 
+              flex: 1,
+              border: '1px solid rgba(16, 185, 129, 0.2)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{ position: 'absolute', right: '-10px', bottom: '-10px', fontSize: '40px', opacity: 0.1 }}>✅</div>
+              <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--success)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Justifiées</p>
+              <p style={{ fontSize: '32px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{metrics.absences.justifiees}</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>jours validés</p>
             </div>
-            <div style={{ padding: '15px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', flex: 1 }}>
-              <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--danger)', textTransform: 'uppercase' }}>Injustifiées</p>
-              <p style={{ fontSize: '24px', fontWeight: 800 }}>{metrics.absences.nonJustifiees}</p>
+            
+            <div style={{ 
+              padding: '20px', 
+              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%)', 
+              borderRadius: '16px', 
+              flex: 1,
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{ position: 'absolute', right: '-10px', bottom: '-10px', fontSize: '40px', opacity: 0.1 }}>❌</div>
+              <p style={{ fontSize: '12px', fontWeight: 700, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Injustifiées</p>
+              <p style={{ fontSize: '32px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{metrics.absences.nonJustifiees}</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>sans motif</p>
             </div>
           </div>
         </div>
-        <div style={{ width: '250px', height: '250px' }}>
+
+        <div style={{ width: '260px', height: '260px', position: 'relative', display: 'flex', alignItems: 'center', justifyItems: 'center' }}>
+          <div style={{ 
+            position: 'absolute', 
+            top: '50%', 
+            left: '50%', 
+            transform: 'translate(-50%, -50%)',
+            textAlign: 'center',
+            zIndex: 0
+          }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', fontWeight: 600 }}>Total</p>
+            <p style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{metrics.absences.total}</p>
+          </div>
           <Doughnut
             data={{
               labels: ['Justifiées', 'Non Justifiées'],
               datasets: [{
                 data: [metrics.absences.justifiees, metrics.absences.nonJustifiees],
                 backgroundColor: ['#10b981', '#ef4444'],
+                hoverBackgroundColor: ['#059669', '#dc2626'],
                 borderWidth: 0,
-                hoverOffset: 10
+                hoverOffset: 15,
+                borderRadius: 5
               }]
             }}
             options={{
-              cutout: '70%',
+              cutout: '75%',
+              responsive: true,
+              maintainAspectRatio: false,
               plugins: {
                 legend: { display: false },
                 tooltip: {
-                  backgroundColor: '#1e1b4b',
+                  backgroundColor: 'rgba(30, 27, 75, 0.95)',
                   padding: 12,
-                  bodyFont: { size: 14, weight: 'bold' }
+                  titleFont: { size: 12 },
+                  bodyFont: { size: 14, weight: 'bold' },
+                  cornerRadius: 8,
+                  displayColors: false
                 }
               }
             }}

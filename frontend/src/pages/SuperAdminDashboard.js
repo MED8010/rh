@@ -17,12 +17,7 @@ const SuperAdminDashboard = () => {
 
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-  useEffect(() => {
-    fetchUsers();
-    fetchEmployes();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = React.useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API_URL}/users`, {
@@ -32,9 +27,9 @@ const SuperAdminDashboard = () => {
     } catch (error) {
       console.error('Erreur lors du chargement des utilisateurs:', error);
     }
-  };
+  }, [API_URL]);
 
-  const fetchEmployes = async () => {
+  const fetchEmployes = React.useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API_URL}/employes`, {
@@ -44,7 +39,12 @@ const SuperAdminDashboard = () => {
     } catch (error) {
       console.error('Erreur lors du chargement des employés:', error);
     }
-  };
+  }, [API_URL]);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchEmployes();
+  }, [fetchUsers, fetchEmployes]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

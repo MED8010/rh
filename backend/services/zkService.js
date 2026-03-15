@@ -210,7 +210,7 @@ const getDeviceInfo = async () => {
 const initSync = () => {
     setInterval(() => {
         if (isSyncActive) syncLogs();
-    }, 60000);
+    }, 600000);
     
     // Run immediately on start if active
     if (isSyncActive) syncLogs();

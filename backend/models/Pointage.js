@@ -46,7 +46,13 @@ const pointageSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  source: {
+    type: String,
+    enum: ['manual', 'biometric'],
+    default: 'manual'
+  },
+  zk_timestamp: Date
 });
 
 // Index pour les requêtes rapides

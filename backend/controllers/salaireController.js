@@ -176,10 +176,10 @@ const getSalaireStats = async (req, res) => {
     const salaire_moyen = filteredSalaires.length > 0 ? (masse_salariale / filteredSalaires.length).toFixed(2) : 0;
 
     res.json({
-      nombre_salaires: filteredSalaires.length,
-      masse_salariale: parseFloat(masse_salariale.toFixed(2)),
-      salaire_moyen: parseFloat(salaire_moyen),
-      heures_totales: parseFloat(heures_totales.toFixed(2))
+      nombreSalaires: filteredSalaires.length,
+      masseSalariale: parseFloat(masse_salariale.toFixed(2)),
+      salaireMoyen: parseFloat(salaire_moyen),
+      heuresTotales: parseFloat(heures_totales.toFixed(2))
     });
   } catch (error) {
     res.status(500).json({ message: 'Erreur lors de la récupération des statistiques', error: error.message });
@@ -189,11 +189,30 @@ const getSalaireStats = async (req, res) => {
 // Obtenir les statistiques analytiques de salaires avec services et UAPs
 const getSalaryAnalytics = async (req, res) => {
   try {
-    const { mois, annee, service, uap } = req.query;
+    const { mois, annee, service, uap, date_debut, date_fin } = req.query;
     let filter = {};
 
-    if (mois) filter.mois = parseInt(mois);
-    if (annee) filter.annee = parseInt(annee);
+    if (date_debut && date_fin) {
+      const start = new Date(date_debut);
+      const end = new Date(date_fin);
+      
+      const periods = [];
+      let current = new Date(start.getFullYear(), start.getMonth(), 1);
+      while (current <= end) {
+        periods.push({
+          mois: current.getMonth() + 1,
+          annee: current.getFullYear()
+        });
+        current.setMonth(current.getMonth() + 1);
+      }
+      
+      if (periods.length > 0) {
+        filter.$or = periods;
+      }
+    } else {
+      if (mois) filter.mois = parseInt(mois);
+      if (annee) filter.annee = parseInt(annee);
+    }
 
     // Récupérer les salaires avec données employé complètes
     const salaires = await Salaire.find(filter).populate({

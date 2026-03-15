@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../services/api';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
 import '../styles/Dashboard.css';
 
 const EmployeeDashboard = () => {
@@ -11,6 +13,7 @@ const EmployeeDashboard = () => {
   const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [pointageView, setPointageView] = useState('table'); // 'table' or 'calendar'
 
   useEffect(() => {
     loadData();
@@ -36,6 +39,40 @@ const EmployeeDashboard = () => {
       setLoading(false);
     }
   };
+
+  // Map data to calendar events
+  const calendarEvents = [
+    ...pointages.map(p => {
+      let color = '#10b981'; // Success (Present)
+      let title = `✅ Présent (${p.heure_entree})`;
+      
+      if (p.absence) {
+        color = '#ef4444'; // Danger (Absent)
+        title = '❌ Absent';
+      } else if (p.retard_minutes > 0) {
+        color = '#f59e0b'; // Warning (Late)
+        title = `⚠️ Retard ${p.retard_minutes}min`;
+      }
+
+      return {
+        id: `p-${p._id}`,
+        title: title,
+        start: p.date.split('T')[0],
+        backgroundColor: color,
+        borderColor: color,
+        extendedProps: { ...p, type: 'pointage' }
+      };
+    }),
+    ...conges.filter(c => c.statut === 'approuve').map(c => ({
+      id: `c-${c._id}`,
+      title: `🏖️ Congé: ${c.type}`,
+      start: c.date_debut.split('T')[0],
+      end: new Date(new Date(c.date_fin).getTime() + 86400000).toISOString().split('T')[0], // End date is exclusive in FC
+      backgroundColor: '#3b82f6', // Info (Blue)
+      borderColor: '#3b82f6',
+      extendedProps: { ...c, type: 'conge' }
+    }))
+  ];
 
   if (loading) {
     return <div className="loading"><div className="spinner"></div>Chargement de votre tableau de bord...</div>;
@@ -231,41 +268,81 @@ const EmployeeDashboard = () => {
       {/* Pointages Tab */}
       {activeTab === 'pointages' && (
         <div className="tab-content">
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Entrée</th>
-                  <th>Sortie</th>
-                  <th>Heures Travaillées</th>
-                  <th>Heures Supp.</th>
-                  <th>Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pointages.length > 0 ? pointages.map(p => (
-                  <tr key={p._id}>
-                    <td><strong>{new Date(p.date).toLocaleDateString('fr-FR')}</strong></td>
-                    <td>{p.absence ? '—' : p.heure_entree}</td>
-                    <td>{p.absence ? '—' : (p.heure_sortie || '—')}</td>
-                    <td>{p.heures_travaillees || 0}h</td>
-                    <td>{(p.heures_supp || 0) > 0 ? <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{p.heures_supp}h</span> : '0h'}</td>
-                    <td>
-                      {p.absence
-                        ? <span className="badge badge-danger">❌ Absent</span>
-                        : p.retard_minutes > 0
-                          ? <span className="badge badge-warning">⚠️ Retard {p.retard_minutes}min</span>
-                          : <span className="badge badge-success">✅ Présent</span>
-                      }
-                    </td>
-                  </tr>
-                )) : (
-                  <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>Aucun pointage enregistré</td></tr>
-                )}
-              </tbody>
-            </table>
+          <div className="tab-header-actions mb-4">
+            <div className="view-toggle">
+              <button 
+                className={`toggle-btn ${pointageView === 'table' ? 'active' : ''}`}
+                onClick={() => setPointageView('table')}
+              >
+                📋 Tableau
+              </button>
+              <button 
+                className={`toggle-btn ${pointageView === 'calendar' ? 'active' : ''}`}
+                onClick={() => setPointageView('calendar')}
+              >
+                📅 Calendrier
+              </button>
+            </div>
           </div>
+
+          {pointageView === 'table' ? (
+            <div className="table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Entrée</th>
+                    <th>Sortie</th>
+                    <th>Heures Travaillées</th>
+                    <th>Heures Supp.</th>
+                    <th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pointages.length > 0 ? pointages.map(p => (
+                    <tr key={p._id}>
+                      <td><strong>{new Date(p.date).toLocaleDateString('fr-FR')}</strong></td>
+                      <td>{p.absence ? '—' : p.heure_entree}</td>
+                      <td>{p.absence ? '—' : (p.heure_sortie || '—')}</td>
+                      <td>{p.heures_travaillees || 0}h</td>
+                      <td>{(p.heures_supp || 0) > 0 ? <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{p.heures_supp}h</span> : '0h'}</td>
+                      <td>
+                        {p.absence
+                          ? <span className="badge badge-danger">❌ Absent</span>
+                          : p.retard_minutes > 0
+                            ? <span className="badge badge-warning">⚠️ Retard {p.retard_minutes}min</span>
+                            : <span className="badge badge-success">✅ Présent</span>
+                        }
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>Aucun pointage enregistré</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="calendar-wrapper section-card">
+              <FullCalendar
+                plugins={[dayGridPlugin]}
+                initialView="dayGridMonth"
+                locale="fr"
+                headerToolbar={{
+                  left: 'prev,next today',
+                  center: 'title',
+                  right: ''
+                }}
+                events={calendarEvents}
+                height="auto"
+                eventTimeFormat={{
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  meridiem: false,
+                  hour12: false
+                }}
+              />
+            </div>
+          )}
         </div>
       )}
 

@@ -5,18 +5,47 @@ import '../styles/Dashboard.css';
 const PointagesPage = () => {
   const [retards, setRetards] = useState([]);
   const [absences, setAbsences] = useState([]);
-  const [allPointages, setAllPointages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('retards');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [services, setServices] = useState([]);
+  const [uaps, setUaps] = useState([]);
+  const [selectedService, setSelectedService] = useState('');
+  const [selectedUap, setSelectedUap] = useState('');
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { 
+    loadStructures();
+  }, []);
+
+  useEffect(() => { 
+    loadData(); 
+  }, [selectedDate, selectedService, selectedUap]);
+
+  const loadStructures = async () => {
+    try {
+      const [servRes, uapRes] = await Promise.all([
+        apiClient.get('/structure/services'),
+        apiClient.get('/structure/uaps'),
+      ]);
+      setServices(servRes.data);
+      setUaps(uapRes.data);
+    } catch (error) {
+      console.error('Erreur structures:', error);
+    }
+  };
 
   const loadData = async () => {
     try {
+      setLoading(true);
+      const params = {
+        date: selectedDate,
+        service: selectedService || undefined,
+        uap: selectedUap || undefined
+      };
       const [retardsRes, absencesRes] = await Promise.all([
-        apiClient.get('/pointages/stats/retards-day'),
-        apiClient.get('/pointages/stats/absences-day'),
+        apiClient.get('/pointages/stats/retards-day', { params }),
+        apiClient.get('/pointages/stats/absences-day', { params }),
       ]);
       setRetards(retardsRes.data);
       setAbsences(absencesRes.data);
@@ -46,9 +75,17 @@ const PointagesPage = () => {
       <div className="page-header">
         <div className="page-title-group">
           <h1>Suivi des Pointages</h1>
-          <p className="page-subtitle">📅 {today}</p>
+          <p className="page-subtitle">📅 {new Date(selectedDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
-        <button className="btn-primary" onClick={loadData}>🔄 Actualiser</button>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontWeight: 600 }}
+          />
+          <button className="btn-primary" onClick={loadData}>🔄 Actualiser</button>
+        </div>
       </div>
 
       {/* KPI Summary */}
@@ -86,14 +123,34 @@ const PointagesPage = () => {
       </div>
 
       {/* Search */}
-      <div className="search-bar" style={{ marginBottom: 20, maxWidth: 400 }}>
-        <span className="search-icon">🔍</span>
-        <input
-          type="text"
-          placeholder="Rechercher un employé..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-        />
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+        <div className="search-bar" style={{ flex: 1, minWidth: '300px' }}>
+          <span className="search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Rechercher un employé..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+        
+        <select
+          value={selectedService}
+          onChange={e => setSelectedService(e.target.value)}
+          style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13.5px', cursor: 'pointer', minWidth: '180px' }}
+        >
+          <option value="">Tous les Services</option>
+          {services.map(s => <option key={s._id} value={s._id}>{s.nom_service}</option>)}
+        </select>
+
+        <select
+          value={selectedUap}
+          onChange={e => setSelectedUap(e.target.value)}
+          style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13.5px', cursor: 'pointer', minWidth: '180px' }}
+        >
+          <option value="">Toutes les UAPs</option>
+          {uaps.map(u => <option key={u._id} value={u._id}>{u.nom_uap}</option>)}
+        </select>
       </div>
 
       {/* Tabs */}

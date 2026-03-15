@@ -62,6 +62,7 @@ const employeSchema = new mongoose.Schema({
     trim: true
   },
   adresse: String,
+  photo: String,
   createdAt: {
     type: Date,
     default: Date.now

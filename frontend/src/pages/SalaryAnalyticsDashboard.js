@@ -33,11 +33,7 @@ const SalaryAnalyticsDashboard = () => {
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadMetrics();
-  }, [period]);
-
-  const loadMetrics = async () => {
+  const loadMetrics = React.useCallback(async () => {
     try {
       setLoading(true);
       const [metricsRes, trendsRes] = await Promise.all([
@@ -53,7 +49,11 @@ const SalaryAnalyticsDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
+
+  useEffect(() => {
+    loadMetrics();
+  }, [loadMetrics]);
 
   const handlePeriodChange = (type, value) => {
     setPeriod(prev => ({

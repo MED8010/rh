@@ -80,13 +80,34 @@ const getPointagesByEmploye = async (req, res) => {
 // Obtenir les retards du jour
 const getRetardsOfDay = async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { date, service, uap } = req.query;
+    
+    let targetDate = date ? new Date(date) : new Date();
+    targetDate.setHours(0, 0, 0, 0);
+    const endOfTargetDay = new Date(targetDate);
+    endOfTargetDay.setHours(23, 59, 59, 999);
 
-    const retards = await Pointage.find({
-      date: { $gte: today },
-      retard_minutes: { $gt: 0 }
-    }).populate('employe');
+    let pointageFilter = {
+      date: { $gte: targetDate, $lte: endOfTargetDay },
+      retard_minutes: { $gt: 0 },
+      absence: { $ne: true }
+    };
+
+    // 1. Get employees satisfying service/uap filter
+    let employeFilter = { statut: 'actif' };
+    if (service) employeFilter.service = service;
+    if (uap) employeFilter.uap = uap;
+
+    const filteredEmployes = await Employe.find(employeFilter).select('_id');
+    const employeIds = filteredEmployes.map(e => e._id);
+
+    pointageFilter.employe = { $in: employeIds };
+
+    const retards = await Pointage.find(pointageFilter)
+      .populate({
+        path: 'employe',
+        populate: [{ path: 'service' }, { path: 'uap' }]
+      });
 
     res.json(retards);
   } catch (error) {
@@ -97,15 +118,67 @@ const getRetardsOfDay = async (req, res) => {
 // Obtenir les absences du jour
 const getAbsencesOfDay = async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { date, service, uap } = req.query;
+    
+    let targetDate = date ? new Date(date) : new Date();
+    targetDate.setHours(0, 0, 0, 0);
+    const endOfTargetDay = new Date(targetDate);
+    endOfTargetDay.setHours(23, 59, 59, 999);
 
-    const absences = await Pointage.find({
-      date: { $gte: today },
+    // 1. Obtenir les employés filtrés par service/uap
+    let employeFilter = { statut: 'actif' };
+    if (service) employeFilter.service = service;
+    if (uap) employeFilter.uap = uap;
+
+    const employesActifs = await Employe.find(employeFilter).populate('service uap');
+    const employeIds = employesActifs.map(e => e._id);
+
+    // 2. Obtenir tous les pointages (présences) pour cette date
+    const pointagesToday = await Pointage.find({
+      date: { $gte: targetDate, $lte: endOfTargetDay },
+      employe: { $in: employeIds },
+      absence: { $ne: true },
+      heure_entree: { $exists: true }
+    });
+
+    const presentIds = pointagesToday.map(p => p.employe.toString());
+
+    // 3. Obtenir les congés approuvés pour cette date
+    const congesToday = await Conge.find({
+      statut: 'approuve',
+      employe: { $in: employeIds },
+      date_debut: { $lte: endOfTargetDay },
+      date_fin: { $gte: targetDate }
+    });
+
+    const congeIds = congesToday.map(c => c.employe.toString());
+
+    // 4. Identifier les records d'absence explicites
+    const explicitAbsences = await Pointage.find({
+      date: { $gte: targetDate, $lte: endOfTargetDay },
+      employe: { $in: employeIds },
       absence: true
-    }).populate('employe');
+    }).populate({
+      path: 'employe',
+      populate: [{ path: 'service' }, { path: 'uap' }]
+    });
 
-    res.json(absences);
+    // 5. Calculer la liste finale des absents
+    const combinedAbsences = employesActifs
+      .filter(emp => !presentIds.includes(emp._id.toString()) && !congeIds.includes(emp._id.toString()))
+      .map(emp => {
+        const existing = explicitAbsences.find(ea => ea.employe._id.toString() === emp._id.toString());
+        if (existing) return existing;
+        
+        return {
+          employe: emp,
+          date: targetDate,
+          absence: true,
+          motif_absence: 'Non pointé'
+        };
+      });
+
+    res.json(combinedAbsences);
   } catch (error) {
     res.status(500).json({ message: 'Erreur lors de la récupération des absences', error: error.message });
   }
@@ -114,50 +187,94 @@ const getAbsencesOfDay = async (req, res) => {
 // Obtenir les statistiques du temps avec filtres
 const getTimeStats = async (req, res) => {
   try {
-    const { service, uap, mois, annee } = req.query;
+    const { service, uap, mois, annee, date_debut, date_fin } = req.query;
 
     let dateFilter = {};
-    if (mois && annee) {
+    let isSingleDay = false;
+
+    if (date_debut && date_fin) {
+      const start = new Date(date_debut);
+      const end = new Date(date_fin);
+      isSingleDay = date_debut === date_fin;
+      
+      // Elargir généreusement pour capturer les records UTC (ex: 23:00 la veille = Minuit local)
+      dateFilter.date = { 
+        $gte: new Date(start.getTime() - (12 * 60 * 60 * 1000)), 
+        $lte: new Date(end.getTime() + (36 * 60 * 60 * 1000)) 
+      };
+    } else if (mois && annee) {
       const startDate = new Date(annee, mois - 1, 1);
       const endDate = new Date(annee, mois, 0, 23, 59, 59, 999);
-      dateFilter.date = { $gte: startDate, $lte: endDate };
+      dateFilter.date = { 
+        $gte: new Date(startDate.getTime() - (12 * 60 * 60 * 1000)), 
+        $lte: new Date(endDate.getTime() + (12 * 60 * 60 * 1000)) 
+      };
     } else {
+      isSingleDay = true;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      dateFilter.date = { $gte: today };
+      dateFilter.date = { 
+        $gte: new Date(today.getTime() - (12 * 60 * 60 * 1000)), 
+        $lte: new Date(today.getTime() + (36 * 60 * 60 * 1000)) 
+      };
     }
 
     // Filtre sur l'employé pour le pointage
     let pointageMatch = { ...dateFilter };
 
-    // Pour filtrer les pointages par service/uap de l'employé, on doit d'abord identifier les IDs des employés concernés
+    // Pour filtrer les pointages par service/uap de l'employé
     let employeFilter = { statut: 'actif' };
     if (service) employeFilter.service = service;
     if (uap) employeFilter.uap = uap;
 
-    const filteredEmployes = await Employe.find(employeFilter).select('_id');
+    const filteredEmployes = await Employe.find(employeFilter).select('_id adresse');
     const employeIds = filteredEmployes.map(e => e._id);
+    const totalFilteredEmployes = employeIds.length;
 
     pointageMatch.employe = { $in: employeIds };
 
-    const retardCount = await Pointage.countDocuments({
+    // 1. Récupérer tous les records dans la zone temporelle
+    const allRecords = await Pointage.find({
       ...pointageMatch,
-      retard_minutes: { $gt: 0 }
-    });
+      absence: { $ne: true },
+      heure_entree: { $exists: true }
+    }).select('employe retard_minutes').lean();
 
-    const absenceCount = await Pointage.countDocuments({
-      ...pointageMatch,
-      absence: true
-    });
+    // 2. Identifier les employés uniques présents
+    const uniquePresentIds = new Set(allRecords.map(r => r.employe.toString()));
+    const totalPresentsCount = uniquePresentIds.size;
 
-    const totalFilteredEmployes = employeIds.length;
+    // 3. Identifier si un employé a été en retard au moins une fois
+    const lateEmployeeIds = new Set(allRecords.filter(r => r.retard_minutes > 0).map(r => r.employe.toString()));
+    const retardCount = lateEmployeeIds.size;
+
+    // 4. Présents à l'heure = Présent total - Retards
+    const onTimeCount = Math.max(0, totalPresentsCount - retardCount);
+
+    // 5. Calcul des absences
+    let absenceCount = 0;
+    if (isSingleDay) {
+      const startDate = dateFilter.date.$gte;
+      const endDate = dateFilter.date.$lte;
+      
+      const congesToday = await Conge.find({
+        statut: 'approuve',
+        employe: { $in: employeIds },
+        date_debut: { $lte: endDate },
+        date_fin: { $gte: startDate }
+      }).distinct('employe');
+      
+      const presentOrCongeIds = new Set([...uniquePresentIds, ...congesToday.map(id => id.toString())]);
+      absenceCount = Math.max(0, totalFilteredEmployes - presentOrCongeIds.size);
+    } else {
+      absenceCount = await Pointage.countDocuments({
+        ...pointageMatch,
+        absence: true
+      });
+    }
 
     // Distribution géographique (Villes)
-    const allEmployes = await Employe.find(employeFilter).select('adresse');
-    console.log('📍 DEBUG: employeFilter:', employeFilter);
-    console.log('📍 DEBUG: total employes found for geo:', allEmployes.length);
-
-    const villesDist = allEmployes.reduce((acc, emp) => {
+    const villesDist = filteredEmployes.reduce((acc, emp) => {
       if (emp.adresse) {
         const parts = emp.adresse.split(',');
         const ville = parts.length > 2 ? parts[parts.length - 2].trim() : 'Inconnue';
@@ -165,8 +282,6 @@ const getTimeStats = async (req, res) => {
       }
       return acc;
     }, {});
-
-    console.log('📍 DEBUG: villesDist:', villesDist);
 
     const distributionGeographique = Object.entries(villesDist).map(([ville, count]) => ({
       ville,
@@ -176,10 +291,12 @@ const getTimeStats = async (req, res) => {
     res.json({
       retardCount,
       absenceCount,
-      presentCount: totalFilteredEmployes - absenceCount - retardCount,
+      presentCount: totalPresentsCount,
+      onTimeCount,
       totalEmployes: totalFilteredEmployes,
-      tauxRetard: totalFilteredEmployes > 0 ? ((retardCount / totalFilteredEmployes) * 100).toFixed(2) : 0,
-      tauxAbsenteisme: totalFilteredEmployes > 0 ? ((absenceCount / totalFilteredEmployes) * 100).toFixed(2) : 0,
+      tauxRetard: totalFilteredEmployes > 0 ? ((retardCount / totalFilteredEmployes) * 100).toFixed(1) : 0,
+      tauxAbsenteisme: totalFilteredEmployes > 0 ? ((absenceCount / totalFilteredEmployes) * 100).toFixed(1) : 0,
+      tauxPresence: totalFilteredEmployes > 0 ? ((totalPresentsCount / totalFilteredEmployes) * 100).toFixed(1) : 0,
       distributionGeographique
     });
   } catch (error) {

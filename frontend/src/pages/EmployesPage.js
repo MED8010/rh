@@ -20,6 +20,8 @@ const EmployesPage = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
+  const [filterService, setFilterService] = useState('');
+  const [filterUap, setFilterUap] = useState('');
 
   const emptyForm = {
     matricule: '', nom: '', prenom: '', date_embauche: '',
@@ -181,7 +183,9 @@ const EmployesPage = () => {
       (emp.prenom || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (emp.email && emp.email.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchStatut = !filterStatut || emp.statut === filterStatut;
-    return matchSearch && matchStatut;
+    const matchService = !filterService || (emp.service && emp.service._id === filterService);
+    const matchUap = !filterUap || (emp.uap && emp.uap._id === filterUap);
+    return matchSearch && matchStatut && matchService && matchUap;
   });
 
   return (
@@ -377,10 +381,9 @@ const EmployesPage = () => {
 
       {/* Search & filter bar */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '1fr auto',
-        gap: 12, marginBottom: 20
+        display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap'
       }}>
-        <div className="search-bar">
+        <div className="search-bar" style={{ flex: 1, minWidth: '300px' }}>
           <span className="search-icon">🔍</span>
           <input
             type="text"
@@ -389,6 +392,32 @@ const EmployesPage = () => {
             onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
+        <select
+          value={filterService}
+          onChange={e => setFilterService(e.target.value)}
+          style={{
+            padding: '10px 14px', borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border)', background: 'var(--bg-card)',
+            color: 'var(--text-primary)', fontSize: 13.5, fontFamily: 'inherit',
+            cursor: 'pointer', minWidth: 160
+          }}
+        >
+          <option value="">Tous les Services</option>
+          {services.map(s => <option key={s._id} value={s._id}>{s.nom_service}</option>)}
+        </select>
+        <select
+          value={filterUap}
+          onChange={e => setFilterUap(e.target.value)}
+          style={{
+            padding: '10px 14px', borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border)', background: 'var(--bg-card)',
+            color: 'var(--text-primary)', fontSize: 13.5, fontFamily: 'inherit',
+            cursor: 'pointer', minWidth: 160
+          }}
+        >
+          <option value="">Toutes les UAPs</option>
+          {uaps.map(u => <option key={u._id} value={u._id}>{u.nom_uap}</option>)}
+        </select>
         <select
           value={filterStatut}
           onChange={e => setFilterStatut(e.target.value)}
@@ -464,15 +493,20 @@ const EmployesPage = () => {
                         display: 'flex', alignItems: 'center', gap: 4,
                         maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                       }}>
-                        <span>📍</span> {emp.adresse ? emp.adresse.split(',').slice(-2, -1)[0].trim() : '—'}
+                        <span>📍</span> {(() => {
+                          if (!emp.adresse) return '—';
+                          const parts = emp.adresse.split(',');
+                          if (parts.length >= 2) return parts[parts.length - 2].trim();
+                          return emp.adresse.trim();
+                        })()}
                       </div>
                     </td>
                     <td><strong>{emp.prix_heure} DT</strong></td>
                     <td>{STATUT_BADGE[emp.statut] || emp.statut}</td>
                     <td>
                       <div className="action-buttons" style={{ justifyContent: 'center' }}>
-                        <button className="btn-view" onClick={() => navigate(`/employes/${emp._id}`)} title="Voir détails">
-                          🔍 Voir
+                        <button className="btn-view" onClick={() => navigate(`/employes/${emp._id}`)} title="Consulter le profil complet">
+                          <span style={{ fontSize: '14px' }}>👤</span> Voir
                         </button>
                         <button className="btn-edit" onClick={() => handleEdit(emp)} title="Modifier">
                           ✏️ Modifier
