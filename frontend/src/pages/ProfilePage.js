@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../services/api';
 import '../styles/Dashboard.css';
@@ -7,24 +7,91 @@ const ProfilePage = () => {
     const { user } = useAuth();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [formData, setFormData] = useState({
+        telephone: '',
+        adresse: ''
+    });
+    const [photoFile, setPhotoFile] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState(null);
+    const fileInputRef = useRef(null);
+
+    const API_BASE_URL = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
+
+    const loadProfile = React.useCallback(async () => {
+        try {
+            const response = await apiClient.get(`/employes/${user.employe?._id || user.id}`);
+            setProfile(response.data);
+            setFormData({
+                telephone: response.data.telephone || '',
+                adresse: response.data.adresse || ''
+            });
+            if (response.data.photo) {
+                setPhotoPreview(`${API_BASE_URL}/uploads/profiles/${response.data.photo}`);
+            }
+        } catch (error) {
+            console.error('Erreur profil:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [user, API_BASE_URL]);
 
     useEffect(() => {
-        const loadProfile = async () => {
-            try {
-                const response = await apiClient.get(`/employes/${user.employe._id || user.id}`);
-                setProfile(response.data);
-            } catch (error) {
-                console.error('Erreur profil:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
         if (user?.role !== 'super_admin') {
             loadProfile();
         } else {
             setLoading(false);
         }
-    }, [user]);
+    }, [user, loadProfile]);
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handlePhotoClick = () => {
+        if (isEditing) {
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setPhotoFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPhotoPreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSave = async () => {
+        try {
+            setIsSaving(true);
+            const data = new FormData();
+            data.append('telephone', formData.telephone);
+            data.append('adresse', formData.adresse);
+            if (photoFile) {
+                data.append('photo', photoFile);
+            }
+
+            const response = await apiClient.put(`/employes/${profile._id}`, data);
+
+            setProfile(response.data.employe);
+            setIsEditing(false);
+            setPhotoFile(null);
+            // Reload profile to get clean data and updated strings
+            loadProfile();
+        } catch (error) {
+            console.error('Erreur lors de la sauvegarde du profil:', error);
+            alert('Erreur lors de la sauvegarde : ' + (error.response?.data?.message || error.message));
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     if (loading) return <div className="loading"><div className="spinner"></div>Chargement de votre profil...</div>;
 
@@ -37,13 +104,48 @@ const ProfilePage = () => {
                     <h1>Mon Profil</h1>
                     <p className="page-subtitle">Informations personnelles et professionnelles</p>
                 </div>
+                <div className="header-actions">
+                    {profile && !isEditing && (
+                        <button className="btn-primary" onClick={() => setIsEditing(true)}>
+                            ✏️ Modifier
+                        </button>
+                    )}
+                    {isEditing && (
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button className="btn-secondary" onClick={() => { setIsEditing(false); setPhotoPreview(profile.photo ? `${API_BASE_URL}/uploads/profiles/${profile.photo}` : null); }} disabled={isSaving}>
+                                Annuler
+                            </button>
+                            <button className="btn-primary" onClick={handleSave} disabled={isSaving}>
+                                {isSaving ? 'Enregistrement...' : '💾 Enregistrer'}
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="profile-layout">
                 {/* Profile Card */}
                 <div className="section-card profile-main-card">
                     <div className="profile-header-glow"></div>
-                    <div className="profile-avatar-large">{initials}</div>
+                    <div 
+                        className={`profile-avatar-large ${isEditing ? 'editable' : ''}`} 
+                        onClick={handlePhotoClick}
+                        style={photoPreview ? { backgroundImage: `url(${photoPreview})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' } : {}}
+                    >
+                        {!photoPreview && initials}
+                        {isEditing && (
+                            <div className="avatar-edit-overlay">
+                                <span>📷</span>
+                            </div>
+                        )}
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            onChange={handleFileChange} 
+                            style={{ display: 'none' }} 
+                            accept="image/*"
+                        />
+                    </div>
                     <div className="profile-identity">
                         <h2>{profile ? `${profile.prenom} ${profile.nom}` : 'Super Admin'}</h2>
                         <span className="profile-role-badge">{profile?.role || user.role}</span>
@@ -70,11 +172,36 @@ const ProfilePage = () => {
                                 </div>
                                 <div className="detail-item">
                                     <label>Téléphone</label>
-                                    <span>{profile.telephone || '—'}</span>
+                                    {isEditing ? (
+                                        <input 
+                                            type="text" 
+                                            name="telephone" 
+                                            value={formData.telephone} 
+                                            onChange={handleInputChange}
+                                            className="edit-input"
+                                        />
+                                    ) : (
+                                        <span>{profile.telephone || '—'}</span>
+                                    )}
                                 </div>
                                 <div className="detail-item">
                                     <label>Date d'embauche</label>
                                     <span>{new Date(profile.date_embauche).toLocaleDateString('fr-FR')}</span>
+                                </div>
+                                <div className="detail-item" style={{ gridColumn: 'span 2' }}>
+                                    <label>Adresse Résidentielle</label>
+                                    {isEditing ? (
+                                        <input 
+                                            type="text" 
+                                            name="adresse" 
+                                            value={formData.adresse} 
+                                            onChange={handleInputChange}
+                                            className="edit-input"
+                                            style={{ width: '100%' }}
+                                        />
+                                    ) : (
+                                        <span>{profile.adresse || '—'}</span>
+                                    )}
                                 </div>
                             </>
                         )}
@@ -145,8 +272,8 @@ const ProfilePage = () => {
         }
 
         .profile-avatar-large {
-          width: 120px;
-          height: 120px;
+          width: 140px;
+          height: 140px;
           background: var(--primary);
           color: white;
           border-radius: 50%;
@@ -159,6 +286,37 @@ const ProfilePage = () => {
           border: 4px solid var(--bg-card);
           box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
           z-index: 1;
+          position: relative;
+          cursor: default;
+          transition: transform 0.3s;
+        }
+
+        .profile-avatar-large.editable {
+          cursor: pointer;
+        }
+
+        .profile-avatar-large.editable:hover {
+          transform: scale(1.05);
+        }
+
+        .avatar-edit-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0,0,0,0.4);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          transition: opacity 0.3s;
+          font-size: 24px;
+        }
+
+        .profile-avatar-large.editable:hover .avatar-edit-overlay {
+          opacity: 1;
         }
 
         .profile-identity h2 {
@@ -211,6 +369,23 @@ const ProfilePage = () => {
           font-size: 16px;
           font-weight: 600;
           color: var(--text-primary);
+        }
+
+        .edit-input {
+          padding: 8px 12px;
+          border-radius: 8px;
+          border: 1px solid var(--border);
+          background: var(--bg-body);
+          color: var(--text-primary);
+          font-family: inherit;
+          font-size: 14px;
+          width: 100%;
+          transition: border-color 0.3s;
+        }
+
+        .edit-input:focus {
+          border-color: var(--primary);
+          outline: none;
         }
 
         .stat-mini-card {

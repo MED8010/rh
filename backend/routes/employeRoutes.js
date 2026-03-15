@@ -9,7 +9,7 @@ router.post('/', verifyToken, checkRole(['admin']), createEmploye);
 router.get('/', verifyToken, getEmployes);
 router.get('/stats', verifyToken, checkRole(['admin']), getEmployeStats);
 router.get('/:id', verifyToken, getEmploye);
-router.put('/:id', verifyToken, checkRole(['admin']), updateEmploye);
+router.put('/:id', verifyToken, updateEmploye);
 router.delete('/:id', verifyToken, checkRole(['admin']), deleteEmploye);
 
 module.exports = router;
