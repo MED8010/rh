@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navigation from './components/Navigation';
+import TopNavbar from './components/TopNavbar';
 
 // Pages
 import Login from './pages/Login';
@@ -11,19 +12,18 @@ import AdminDashboard from './pages/AdminDashboard';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import EmployesPage from './pages/EmployesPage';
 import PointagesPage from './pages/PointagesPage';
-import CongesPage from './pages/CongesPage';
 import SalairesPage from './pages/SalairesPage';
 import AuditPage from './pages/AuditPage';
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import NotificationsPage from './pages/NotificationsPage';
 import MesCongesPage from './pages/MesCongesPage';
-import GestionCongesPage from './pages/GestionCongesPage';
 import AdminCongesPage from './pages/AdminCongesPage';
 import CongesChefPage from './pages/CongesChefPage';
 import TimeDisciplineDashboard from './pages/TimeDisciplineDashboard';
 import SalaryAnalyticsDashboard from './pages/SalaryAnalyticsDashboard';
 import ProfilePage from './pages/ProfilePage';
 import EmployeDetail from './pages/EmployeDetail';
+import PointeusesPage from './pages/PointeusesPage';
 
 import './styles/Dashboard.css';
 
@@ -31,9 +31,12 @@ import './styles/Dashboard.css';
 const AppLayout = ({ children }) => (
   <div className="app-layout">
     <Navigation />
-    <main className="main-content">
-      {children}
-    </main>
+    <div className="content-wrapper">
+      <TopNavbar />
+      <main className="main-content">
+        {children}
+      </main>
+    </div>
   </div>
 );
 
@@ -105,6 +108,12 @@ function App() {
           <Route path="/salary-analytics" element={
             <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
               <AppLayout><SalaryAnalyticsDashboard /></AppLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/biometric-devices" element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin', 'chef_service']}>
+              <AppLayout><PointeusesPage /></AppLayout>
             </ProtectedRoute>
           } />
 

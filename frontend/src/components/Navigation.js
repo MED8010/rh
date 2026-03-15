@@ -10,6 +10,7 @@ const NAV_CONFIG = {
       items: [
         { path: '/super-admin', icon: '🔧', label: 'Gestion Système' },
         { path: '/dashboard', icon: '📊', label: 'Dashboard Admin' },
+        { path: '/biometric-devices', icon: '📠', label: 'Pointeuses' },
       ]
     },
     {
@@ -41,6 +42,7 @@ const NAV_CONFIG = {
       section: 'Tableaux de Bord',
       items: [
         { path: '/dashboard', icon: '📊', label: 'Dashboard' },
+        { path: '/biometric-devices', icon: '📠', label: 'Pointeuses' },
       ]
     },
     {
@@ -79,9 +81,15 @@ const NAV_CONFIG = {
   ],
   chef_service: [
     {
-      section: 'Personnel',
+      section: 'Tableaux de Bord',
       items: [
         { path: '/employee-dashboard', icon: '📊', label: 'Mon Dashboard' },
+        { path: '/biometric-devices', icon: '📠', label: 'Pointeuses' },
+      ]
+    },
+    {
+      section: 'Personnel',
+      items: [
         { path: '/mes-conges-chef', icon: '🏖️', label: 'Mes Congés' },
         { path: '/notifications', icon: '🔔', label: 'Notifications', hasNotif: true },
       ]
@@ -89,49 +97,20 @@ const NAV_CONFIG = {
   ],
 };
 
-const ROLE_LABELS = {
-  super_admin: 'Super Admin',
-  admin: 'Administrateur',
-  chef_service: 'Chef de Service',
-  employe: 'Employé',
-};
-
 const Navigation = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-
-  const handleSearch = async (term) => {
-    setSearch(term);
-    if (term.length > 1) {
-      try {
-        const res = await apiClient.get('/employes');
-        const filtered = res.data.filter(e =>
-          e.nom.toLowerCase().includes(term.toLowerCase()) ||
-          e.prenom.toLowerCase().includes(term.toLowerCase()) ||
-          e.matricule.toLowerCase().includes(term.toLowerCase())
-        ).slice(0, 5);
-        setSearchResults(filtered);
-      } catch (err) {
-        console.error(err);
-      }
-    } else {
-      setSearchResults([]);
-    }
-  };
-
+  const [unreadCount, setUnreadCount] = useState(0);
   // Load theme preference
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'light';
     const isDark = savedTheme === 'dark';
-    setIsDarkMode(isDark);
-    applyTheme(isDark);
+    if (isDark) document.body.classList.add('dark-mode');
+    else document.body.classList.remove('dark-mode');
 
     const savedCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
     setIsCollapsed(savedCollapsed);
@@ -152,24 +131,7 @@ const Navigation = () => {
     try {
       const response = await apiClient.get('/notifications');
       setUnreadCount(response.data.unreadCount || 0);
-    } catch (error) {
-      // silently fail
-    }
-  };
-
-  const applyTheme = (isDark) => {
-    if (isDark) {
-      document.body.classList.add('dark-mode');
-    } else {
-      document.body.classList.remove('dark-mode');
-    }
-  };
-
-  const toggleDarkMode = () => {
-    const newDark = !isDarkMode;
-    setIsDarkMode(newDark);
-    localStorage.setItem('theme', newDark ? 'dark' : 'light');
-    applyTheme(newDark);
+    } catch (error) {}
   };
 
   const toggleCollapse = () => {
@@ -180,30 +142,9 @@ const Navigation = () => {
     else document.body.classList.remove('sidebar-collapsed');
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
   const handleNav = (path) => {
     navigate(path);
     setIsMobileOpen(false);
-  };
-
-  // Get user initials
-  const getInitials = () => {
-    if (user?.employe?.prenom && user?.employe?.nom) {
-      return `${user.employe.prenom[0]}${user.employe.nom[0]}`.toUpperCase();
-    }
-    if (user?.email) return user.email[0].toUpperCase();
-    return '?';
-  };
-
-  const getUserDisplayName = () => {
-    if (user?.employe?.prenom && user?.employe?.nom) {
-      return `${user.employe.prenom} ${user.employe.nom}`;
-    }
-    return user?.email || 'Utilisateur';
   };
 
   const navConfig = NAV_CONFIG[user?.role] || [];
@@ -265,61 +206,6 @@ const Navigation = () => {
           </button>
         </div>
 
-        {!isCollapsed && (
-          <div className="sidebar-search" style={{ padding: '0 16px', margin: '16px 0', position: 'relative' }}>
-            <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>🔍</span>
-              <input
-                type="text"
-                placeholder="Rechercher..."
-                value={search}
-                onChange={(e) => handleSearch(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px 10px 32px', borderRadius: '8px',
-                  border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)',
-                  color: 'white', fontSize: '12px', outline: 'none'
-                }}
-              />
-            </div>
-            {searchResults.length > 0 && (
-              <div style={{
-                position: 'absolute', top: '100%', left: 16, right: 16,
-                background: 'var(--bg-card)', borderRadius: 8, marginTop: 4,
-                boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1100,
-                overflow: 'hidden'
-              }}>
-                {searchResults.map(emp => (
-                  <div
-                    key={emp._id}
-                    onClick={() => { navigate(`/employes/${emp._id}`); setSearch(''); setSearchResults([]); }}
-                    style={{
-                      padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)',
-                      display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-primary)'
-                    }}
-                  >
-                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--primary-glow)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>
-                      {emp.prenom[0]}{emp.nom[0]}
-                    </div>
-                    <div style={{ overflow: 'hidden' }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{emp.prenom} {emp.nom}</div>
-                      <div style={{ fontSize: 10, opacity: 0.6 }}>{emp.matricule}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* User */}
-        <div className="sidebar-user" onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
-          <div className="sidebar-avatar">{getInitials()}</div>
-          <div className="sidebar-user-info">
-            <div className="sidebar-user-name">{getUserDisplayName()}</div>
-            <div className="sidebar-user-role">{ROLE_LABELS[user?.role] || 'Utilisateur'}</div>
-          </div>
-        </div>
-
         {/* Navigation */}
         <nav className="sidebar-nav">
           {navConfig.map((group, gi) => (
@@ -346,20 +232,6 @@ const Navigation = () => {
             </div>
           ))}
         </nav>
-
-        {/* Footer actions */}
-        <div className="sidebar-footer">
-          <div className="sidebar-footer-actions">
-            <button className="sidebar-action-btn" onClick={toggleDarkMode}>
-              <span className="nav-icon">{isDarkMode ? '☀️' : '🌙'}</span>
-              <span className="btn-label">{isDarkMode ? 'Mode Clair' : 'Mode Sombre'}</span>
-            </button>
-            <button className="sidebar-action-btn logout" onClick={handleLogout}>
-              <span className="nav-icon">🚪</span>
-              <span className="btn-label">Déconnexion</span>
-            </button>
-          </div>
-        </div>
       </div>
     </>
   );
