@@ -1,5 +1,30 @@
 const Conge = require('../models/Conge');
 const Employe = require('../models/Employe');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
+const { sendCongeNotificationEmail } = require('../services/emailService');
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Crée une notification en base
+ */
+const createNotification = async (userId, type, titre, message, referenceId) => {
+  try {
+    await Notification.create({ user: userId, type, titre, message, reference_id: referenceId });
+  } catch (err) {
+    console.error('❌ Erreur création notification:', err.message);
+  }
+};
+
+/**
+ * Retourne tous les users admin/super_admin
+ */
+const getAdminUsers = async () => {
+  return User.find({ role: { $in: ['admin', 'super_admin'] } });
+};
+
+// ─── Controllers ────────────────────────────────────────────────────────────
 
 // Demander un congé
 const requestConge = async (req, res) => {
@@ -8,31 +33,21 @@ const requestConge = async (req, res) => {
 
     console.log('📝 Création demande congé:', { employe_id, date_debut, date_fin, type, motif });
 
-    // Validation
     if (!employe_id || !date_debut || !date_fin || !type) {
-      console.log('❌ Champs manquants');
       return res.status(400).json({ message: 'Champs manquants: employe_id, date_debut, date_fin, type sont obligatoires' });
     }
 
-    // Calculer le nombre de jours
     const start = new Date(date_debut);
     const end = new Date(date_fin);
     const diffTime = Math.abs(end - start);
     const nombre_jours = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-    console.log('📅 Nombre de jours calculé:', nombre_jours);
-
     const employe = await Employe.findById(employe_id);
     if (!employe) {
-      console.log('❌ Employé non trouvé:', employe_id);
       return res.status(404).json({ message: 'Employé non trouvé' });
     }
 
-    console.log('✅ Employé trouvé:', employe.prenom, employe.nom);
-    console.log('📊 Solde congé restant:', employe.solde_conge_restant);
-
     if (type === 'annuel' && employe.solde_conge_restant < nombre_jours) {
-      console.log('❌ Solde insuffisant');
       return res.status(400).json({ message: `Solde insuffisant! Vous avez ${employe.solde_conge_restant} jours disponibles` });
     }
 
@@ -46,11 +61,25 @@ const requestConge = async (req, res) => {
       statut: 'demande'
     });
 
-    console.log('💾 Sauvegarde congé en cours...');
     await conge.save();
-    console.log('✅ Congé créé avec succès:', conge._id);
-
     await conge.populate('employe');
+
+    // ── Notifier tous les admins ──────────────────────────────────────────────
+    const admins = await getAdminUsers();
+    const employeNomComplet = `${employe.prenom} ${employe.nom}`;
+    const dateDebutFr = start.toLocaleDateString('fr-FR');
+    const dateFinFr = end.toLocaleDateString('fr-FR');
+
+    for (const admin of admins) {
+      await createNotification(
+        admin._id,
+        'conge_demande',
+        '📝 Nouvelle demande de congé',
+        `${employeNomComplet} a soumis une demande de congé (${type}) du ${dateDebutFr} au ${dateFinFr} — ${nombre_jours} jour(s).`,
+        conge._id
+      );
+    }
+    console.log(`🔔 ${admins.length} admin(s) notifié(s) de la nouvelle demande de congé`);
 
     res.status(201).json({ message: 'Demande de congé créée avec succès', conge });
   } catch (error) {
@@ -79,13 +108,13 @@ const getConges = async (req, res) => {
 const approveConge = async (req, res) => {
   try {
     const { id } = req.params;
-    const conge = await Conge.findById(id);
+    const conge = await Conge.findById(id).populate('employe');
 
     if (!conge) {
       return res.status(404).json({ message: 'Congé non trouvé' });
     }
 
-    const employe = await Employe.findById(conge.employe);
+    const employe = await Employe.findById(conge.employe._id || conge.employe);
 
     // Déduire le solde de congé
     if (conge.type === 'annuel') {
@@ -102,6 +131,28 @@ const approveConge = async (req, res) => {
     await conge.save();
     await employe.save();
 
+    // ── Notifier l'employé via son compte User ────────────────────────────────
+    const employeUser = await User.findOne({ employe: employe._id });
+    if (employeUser) {
+      const dateDebutFr = new Date(conge.date_debut).toLocaleDateString('fr-FR');
+      const dateFinFr = new Date(conge.date_fin).toLocaleDateString('fr-FR');
+
+      await createNotification(
+        employeUser._id,
+        'conge_approuve',
+        '✅ Demande de congé approuvée',
+        `Votre demande de congé du ${dateDebutFr} au ${dateFinFr} (${conge.nombre_jours} jour(s)) a été approuvée.`,
+        conge._id
+      );
+
+      // Envoyer email si l'employé a un email
+      if (employeUser.email) {
+        const employeNom = `${employe.prenom} ${employe.nom}`;
+        await sendCongeNotificationEmail(employeUser.email, employeNom, 'approuve', conge);
+      }
+    }
+
+    console.log(`✅ Congé ${id} approuvé — employé notifié`);
     res.json({ message: 'Congé approuvé avec succès', conge });
   } catch (error) {
     res.status(500).json({ message: 'Erreur lors de l\'approbation du congé', error: error.message });
@@ -125,6 +176,35 @@ const rejectConge = async (req, res) => {
       { new: true }
     ).populate(['employe', 'valide_par']);
 
+    if (!conge) {
+      return res.status(404).json({ message: 'Congé non trouvé' });
+    }
+
+    // ── Notifier l'employé via son compte User ────────────────────────────────
+    const employeDoc = conge.employe;
+    const employeUser = await User.findOne({ employe: employeDoc._id });
+
+    if (employeUser) {
+      const dateDebutFr = new Date(conge.date_debut).toLocaleDateString('fr-FR');
+      const dateFinFr = new Date(conge.date_fin).toLocaleDateString('fr-FR');
+      const motifText = commentaire_rejet ? ` Motif : ${commentaire_rejet}.` : '';
+
+      await createNotification(
+        employeUser._id,
+        'conge_refuse',
+        '❌ Demande de congé refusée',
+        `Votre demande de congé du ${dateDebutFr} au ${dateFinFr} (${conge.nombre_jours} jour(s)) a été refusée.${motifText}`,
+        conge._id
+      );
+
+      // Envoyer email si l'employé a un email
+      if (employeUser.email) {
+        const employeNom = `${employeDoc.prenom} ${employeDoc.nom}`;
+        await sendCongeNotificationEmail(employeUser.email, employeNom, 'refuse', conge);
+      }
+    }
+
+    console.log(`❌ Congé ${id} refusé — employé notifié`);
     res.json({ message: 'Congé refusé', conge });
   } catch (error) {
     res.status(500).json({ message: 'Erreur lors du refus du congé', error: error.message });

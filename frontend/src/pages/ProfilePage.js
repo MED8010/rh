@@ -10,8 +10,13 @@ const ProfilePage = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [formData, setFormData] = useState({
+        nom: '',
+        prenom: '',
+        email: '',
         telephone: '',
-        adresse: ''
+        adresse: '',
+        password: '',
+        confirmPassword: ''
     });
     const [photoFile, setPhotoFile] = useState(null);
     const [photoPreview, setPhotoPreview] = useState(null);
@@ -24,8 +29,13 @@ const ProfilePage = () => {
             const response = await apiClient.get(`/employes/${user.employe?._id || user.id}`);
             setProfile(response.data);
             setFormData({
+                nom: response.data.nom || '',
+                prenom: response.data.prenom || '',
+                email: response.data.email || '',
                 telephone: response.data.telephone || '',
-                adresse: response.data.adresse || ''
+                adresse: response.data.adresse || '',
+                password: '',
+                confirmPassword: ''
             });
             if (response.data.photo) {
                 setPhotoPreview(`${API_BASE_URL}/uploads/profiles/${response.data.photo}`);
@@ -69,11 +79,28 @@ const ProfilePage = () => {
     };
 
     const handleSave = async () => {
+        if (formData.password && formData.password !== formData.confirmPassword) {
+            alert('Les mots de passe ne correspondent pas.');
+            return;
+        }
+        if (formData.password && formData.password.length < 6) {
+            alert('Le mot de passe doit contenir au moins 6 caractères.');
+            return;
+        }
+
         try {
             setIsSaving(true);
             const data = new FormData();
+            data.append('nom', formData.nom);
+            data.append('prenom', formData.prenom);
+            data.append('email', formData.email);
             data.append('telephone', formData.telephone);
             data.append('adresse', formData.adresse);
+            
+            if (formData.password) {
+                data.append('password', formData.password);
+            }
+
             if (photoFile) {
                 data.append('photo', photoFile);
             }
@@ -147,14 +174,25 @@ const ProfilePage = () => {
                         />
                     </div>
                     <div className="profile-identity">
-                        <h2>{profile ? `${profile.prenom} ${profile.nom}` : 'Super Admin'}</h2>
+                        {isEditing ? (
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px', justifyContent: 'center' }}>
+                                <input type="text" name="prenom" value={formData.prenom} onChange={handleInputChange} className="edit-input" placeholder="Prénom" style={{ width: '150px', textAlign: 'center' }} />
+                                <input type="text" name="nom" value={formData.nom} onChange={handleInputChange} className="edit-input" placeholder="Nom" style={{ width: '150px', textAlign: 'center' }} />
+                            </div>
+                        ) : (
+                            <h2>{profile ? `${profile.prenom} ${profile.nom}` : 'Super Admin'}</h2>
+                        )}
                         <span className="profile-role-badge">{profile?.role || user.role}</span>
                     </div>
 
                     <div className="profile-details-grid">
                         <div className="detail-item">
                             <label>Email</label>
-                            <span>{profile?.email || user.email}</span>
+                            {isEditing ? (
+                                <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="edit-input" />
+                            ) : (
+                                <span>{profile?.email || user.email}</span>
+                            )}
                         </div>
                         <div className="detail-item">
                             <label>Matricule</label>
@@ -206,6 +244,22 @@ const ProfilePage = () => {
                             </>
                         )}
                     </div>
+
+                    {isEditing && profile && (
+                        <div className="profile-details-grid" style={{ marginTop: '20px', borderTop: 'none', paddingTop: 0 }}>
+                            <div className="detail-item" style={{ gridColumn: 'span 2' }}>
+                                <h3 style={{ fontSize: '14px', color: 'var(--primary)', marginBottom: '8px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>🔒 Sécurité</h3>
+                            </div>
+                            <div className="detail-item">
+                                <label>Nouveau mot de passe</label>
+                                <input type="password" name="password" value={formData.password} onChange={handleInputChange} className="edit-input" placeholder="Laisser vide pour ignorer" />
+                            </div>
+                            <div className="detail-item">
+                                <label>Confirmer le mot de passe</label>
+                                <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} className="edit-input" placeholder="Confirmer le mot de passe" />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Stats Recap (if employee) */}

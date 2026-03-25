@@ -79,13 +79,13 @@ const SalaryAnalyticsDashboard = () => {
           <h1>💰 Analyse des Salaires</h1>
           <p className="welcome-text">Analyse détaillée de la rémunération</p>
         </div>
-        <div style={{ textAlign: 'right', fontSize: '14px', color: '#999' }}>
+        <div style={{ textAlign: 'right', fontSize: '14px', color: 'var(--text-secondary)' }}>
           <div>
             <label style={{ marginRight: '10px' }}>Mois:</label>
             <select
               value={period.mois}
               onChange={(e) => handlePeriodChange('mois', e.target.value)}
-              style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+              className="filter-select"
             >
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
                 <option key={m} value={m}>{moisNames[m]}</option>
@@ -97,7 +97,7 @@ const SalaryAnalyticsDashboard = () => {
             <select
               value={period.annee}
               onChange={(e) => handlePeriodChange('annee', e.target.value)}
-              style={{ padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+              className="filter-select"
             >
               {[2024, 2025, 2026].map(a => (
                 <option key={a} value={a}>{a}</option>

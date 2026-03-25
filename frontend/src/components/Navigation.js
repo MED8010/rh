@@ -83,8 +83,7 @@ const NAV_CONFIG = {
     {
       section: 'Tableaux de Bord',
       items: [
-        { path: '/employee-dashboard', icon: '📊', label: 'Mon Dashboard' },
-        { path: '/biometric-devices', icon: '📠', label: 'Pointeuses' },
+        { path: '/employee-dashboard', icon: '📊', label: 'Mon Dashboard' }
       ]
     },
     {

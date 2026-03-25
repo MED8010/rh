@@ -222,7 +222,7 @@ const updateEmploye = async (req, res) => {
         return res.status(400).json({ message: err.message });
       }
 
-      const { nom, prenom, email, telephone, adresse, statut, prix_heure, service, uap, solde_conge_restant, matricule } = req.body;
+      const { nom, prenom, email, telephone, adresse, statut, prix_heure, service, uap, solde_conge_restant, matricule, password, role } = req.body;
 
       // Vérification des droits
       const isAdmin = ['admin', 'super_admin'].includes(req.user.role);
@@ -251,8 +251,7 @@ const updateEmploye = async (req, res) => {
         return res.status(403).json({ message: 'Accès non autorisé - Droits insuffisants' });
       }
 
-      // Mise à jour des champs
-      // Les non-admins ne peuvent pas modifier les champs sensibles
+      // Mise à jour des champs de l'employé
       if (isAdmin) {
         if (nom) employe.nom = nom;
         if (prenom) employe.prenom = prenom;
@@ -263,20 +262,15 @@ const updateEmploye = async (req, res) => {
         if (solde_conge_restant) employe.solde_conge_restant = solde_conge_restant;
         if (matricule) employe.matricule = matricule;
       } else {
-        // L'utilisateur modifie son propre profil
-        // On autorise nom/prenom car l'admin peut toujours corriger si besoin
-        // mais on priorise email, telephone, adresse
         if (nom) employe.nom = nom;
         if (prenom) employe.prenom = prenom;
       }
 
-      // Champs modifiables par tout le monde (admin ou propriétaire)
       if (email) employe.email = email;
       if (telephone) employe.telephone = telephone;
       if (adresse) employe.adresse = adresse;
 
       if (req.file) {
-        // Supprimer l'ancienne photo si elle existe
         if (employe.photo) {
           const oldPath = path.join('backend/uploads/profiles', employe.photo);
           if (fs.existsSync(oldPath)) {
@@ -288,8 +282,69 @@ const updateEmploye = async (req, res) => {
 
       employe.updatedAt = new Date();
       await employe.save();
-      await employe.populate(['service', 'uap']);
 
+      // 🔄 Synchronisation avec le compte utilisateur
+      try {
+        console.log(`\n🔄 SYNC START for Employe: ${employe._id} (${employe.matricule})`);
+        
+        // Tentative de trouver l'utilisateur par les deux bouts de la relation
+        // Important: +password pour éviter l'erreur de validation "password is required" lors de save()
+        let linkedUser = await User.findOne({ employe: employe._id }).select('+password');
+        if (!linkedUser && employe.user) {
+          console.log(`🔍 User not found by {employe: ID}, trying by _id: ${employe.user}`);
+          linkedUser = await User.findById(employe.user).select('+password');
+        }
+
+        if (linkedUser) {
+          console.log(`✅ Linked User found: ${linkedUser._id} (${linkedUser.email})`);
+          let userModified = false;
+
+          // Mise à jour de l'email si nécessaire
+          if (email) {
+            const normalizedEmail = email.toLowerCase().trim();
+            if (linkedUser.email !== normalizedEmail) {
+              console.log(`   📧 Synchronisation email: ${linkedUser.email} -> ${normalizedEmail}`);
+              linkedUser.email = normalizedEmail;
+              userModified = true;
+            } else {
+              console.log(`   📧 Email already matches: ${normalizedEmail}`);
+            }
+          }
+
+          // Mise à jour du mot de passe si fourni
+          if (password && password.trim() !== '') {
+            console.log(`   🔑 Synchronisation mot de passe (${password.length} chars)`);
+            linkedUser.password = password; // Sera haché par le middleware pre-save
+            userModified = true;
+          }
+
+          // Mise à jour du rôle (admin seulement)
+          if (isAdmin && role) {
+            if (linkedUser.role !== role) {
+              console.log(`   👑 Synchronisation rôle: ${linkedUser.role} -> ${role}`);
+              linkedUser.role = role;
+              userModified = true;
+            }
+          }
+
+          if (userModified) {
+            console.log(`   💾 Sauvegarde de l'utilisateur synchronisé...`);
+            await linkedUser.save();
+            console.log(`✅ Compte utilisateur synchronisé avec succès`);
+          } else {
+            console.log(`   ⏭️ Aucune modification nécessaire pour l'utilisateur`);
+          }
+        } else {
+          console.warn(`⚠️ Aucun compte utilisateur trouvé pour l'employé ${employe._id}`);
+          console.log(`   Email fourni dans la requête: ${email}`);
+          console.log(`   L'employé a-t-il un champ 'user'? ${!!employe.user}`);
+        }
+        console.log(`🔄 SYNC END\n`);
+      } catch (syncError) {
+        console.error('❌ ERREUR SYNC UTILISATEUR:', syncError);
+      }
+
+      await employe.populate(['service', 'uap']);
       res.json({ message: 'Profil mis à jour avec succès', employe });
     });
   } catch (error) {

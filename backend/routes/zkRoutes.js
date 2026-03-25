@@ -11,7 +11,7 @@ const router = express.Router();
 // --- GESTION DES APPAREILS (CRUD) ---
 
 // Ajouter une nouvelle pointeuse
-router.post('/devices', verifyToken, checkRole(['admin', 'super_admin', 'chef_service']), async (req, res) => {
+router.post('/devices', verifyToken, checkRole(['admin', 'super_admin']), async (req, res) => {
   try {
     const { name, ip, port } = req.body;
     const device = new BiometricDevice({ name, ip, port });
@@ -23,7 +23,7 @@ router.post('/devices', verifyToken, checkRole(['admin', 'super_admin', 'chef_se
 });
 
 // Modifier une pointeuse existante
-router.put('/devices/:id', verifyToken, checkRole(['admin', 'super_admin', 'chef_service']), async (req, res) => {
+router.put('/devices/:id', verifyToken, checkRole(['admin', 'super_admin']), async (req, res) => {
   try {
     const { name, ip, port, isActive } = req.body;
     const device = await BiometricDevice.findByIdAndUpdate(
@@ -39,7 +39,7 @@ router.put('/devices/:id', verifyToken, checkRole(['admin', 'super_admin', 'chef
 });
 
 // Supprimer une pointeuse
-router.delete('/devices/:id', verifyToken, checkRole(['admin', 'super_admin', 'chef_service']), async (req, res) => {
+router.delete('/devices/:id', verifyToken, checkRole(['admin', 'super_admin']), async (req, res) => {
   try {
     const device = await BiometricDevice.findByIdAndDelete(req.params.id);
     if (!device) return res.status(404).json({ message: 'Pointeuse non trouvée' });
@@ -52,7 +52,7 @@ router.delete('/devices/:id', verifyToken, checkRole(['admin', 'super_admin', 'c
 // --- SYNCHRONISATION ET STATUT ---
 
 // Route pour déclencher manuellement la synchronisation
-router.post('/sync', verifyToken, checkRole(['admin', 'super_admin', 'chef_service']), async (req, res) => {
+router.post('/sync', verifyToken, checkRole(['admin', 'super_admin']), async (req, res) => {
   try {
     const result = await syncLogs();
     if (result.status === 'disabled') {
@@ -74,7 +74,7 @@ router.post('/sync', verifyToken, checkRole(['admin', 'super_admin', 'chef_servi
 });
 
 // Route pour activer/désactiver la synchronisation
-router.post('/toggle', verifyToken, checkRole(['admin', 'super_admin', 'chef_service']), async (req, res) => {
+router.post('/toggle', verifyToken, checkRole(['admin', 'super_admin']), async (req, res) => {
   console.log(`[ZK] Toggle request from ${req.user.role} (${req.user.id}):`, req.body);
   try {
     const { active } = req.body;
@@ -89,12 +89,12 @@ router.post('/toggle', verifyToken, checkRole(['admin', 'super_admin', 'chef_ser
 });
 
 // Route pour obtenir le statut actuel de la synchronisation
-router.get('/status', verifyToken, checkRole(['admin', 'super_admin', 'chef_service']), async (req, res) => {
+router.get('/status', verifyToken, checkRole(['admin', 'super_admin']), async (req, res) => {
   res.json({ active: getSyncStatus() });
 });
 
 // Route pour récupérer les infos en direct des pointeuses
-router.get('/devices', verifyToken, checkRole(['admin', 'super_admin', 'chef_service']), async (req, res) => {
+router.get('/devices', verifyToken, checkRole(['admin', 'super_admin']), async (req, res) => {
   try {
     const devices = await getDeviceInfo();
     res.json(devices);
@@ -104,7 +104,7 @@ router.get('/devices', verifyToken, checkRole(['admin', 'super_admin', 'chef_ser
 });
 
 // Route pour récupérer les derniers logs de connexion
-router.get('/logs', verifyToken, checkRole(['admin', 'super_admin', 'chef_service']), async (req, res) => {
+router.get('/logs', verifyToken, checkRole(['admin', 'super_admin']), async (req, res) => {
   try {
     const logs = await ZkLog.find().sort({ timestamp: -1 }).limit(20);
     res.json(logs);

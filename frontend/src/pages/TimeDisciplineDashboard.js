@@ -96,7 +96,7 @@ const TimeDisciplineDashboard = () => {
             <select 
               value={selectedService} 
               onChange={(e) => setSelectedService(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13px' }}
+              className="filter-select"
             >
               <option value="">Tous les Services</option>
               {services.map(s => <option key={s._id} value={s._id}>{s.nom_service}</option>)}
@@ -104,7 +104,7 @@ const TimeDisciplineDashboard = () => {
             <select 
               value={selectedUap} 
               onChange={(e) => setSelectedUap(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13px' }}
+              className="filter-select"
             >
               <option value="">Toutes les UAPs</option>
               {uaps.map(u => <option key={u._id} value={u._id}>{u.nom_uap}</option>)}
@@ -118,7 +118,7 @@ const TimeDisciplineDashboard = () => {
                 type="date"
                 value={dateRange.start.toISOString().split('T')[0]}
                 onChange={(e) => handleDateChange('start', e.target.value)}
-                style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13px' }}
+                className="filter-input"
               />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -127,7 +127,7 @@ const TimeDisciplineDashboard = () => {
                 type="date"
                 value={dateRange.end.toISOString().split('T')[0]}
                 onChange={(e) => handleDateChange('end', e.target.value)}
-                style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13px' }}
+                className="filter-input"
               />
             </div>
           </div>
@@ -231,7 +231,7 @@ const TimeDisciplineDashboard = () => {
           />
         </div>
       </div>
-      <div className="kpi-container">
+      <div className="kpi-container ">
         <div className="kpi-card">
           <div className="kpi-icon">🚨</div>
           <div className="kpi-content">

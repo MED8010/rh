@@ -18,7 +18,7 @@ const TopNavbar = () => {
     
     if (user) {
       loadUnreadNotifications();
-      const interval = setInterval(loadUnreadNotifications, 30000);
+      const interval = setInterval(loadUnreadNotifications, 15000);
       return () => clearInterval(interval);
     }
   }, [user]);

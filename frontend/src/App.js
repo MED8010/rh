@@ -112,7 +112,7 @@ function App() {
           } />
 
           <Route path="/biometric-devices" element={
-            <ProtectedRoute allowedRoles={['admin', 'super_admin', 'chef_service']}>
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
               <AppLayout><PointeusesPage /></AppLayout>
             </ProtectedRoute>
           } />
