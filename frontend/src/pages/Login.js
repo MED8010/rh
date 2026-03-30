@@ -42,7 +42,10 @@ const Login = () => {
     <div className="auth-container">
       {/* Branding side */}
       <div className="auth-branding">
-        <div className="auth-logo-mark">🏢</div>
+        <div className="auth-logo-mark" style={{ background: 'transparent', boxShadow: 'none' }}>
+          <img src="/lpe-logo.png" alt="LPE Logo" style={{ width: '150px', height: 'auto', dropShadow: '0 4px 12px rgba(0,0,0,0.1)' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+          <span style={{ display: 'none', fontSize: '64px' }}>🏢</span>
+        </div>
         <h1>
           Gestion des <span className="highlight">Ressources</span> Humaines
         </h1>

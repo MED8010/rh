@@ -24,6 +24,9 @@ import SalaryAnalyticsDashboard from './pages/SalaryAnalyticsDashboard';
 import ProfilePage from './pages/ProfilePage';
 import EmployeDetail from './pages/EmployeDetail';
 import PointeusesPage from './pages/PointeusesPage';
+import ConfigurationPage from './pages/ConfigurationPage';
+import EmployeeDocumentsPage from './pages/EmployeeDocumentsPage';
+import AdminDocumentsPage from './pages/AdminDocumentsPage';
 
 import './styles/Dashboard.css';
 
@@ -93,6 +96,12 @@ function App() {
             </ProtectedRoute>
           } />
 
+          <Route path="/admin-documents" element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+              <AppLayout><AdminDocumentsPage /></AppLayout>
+            </ProtectedRoute>
+          } />
+
           <Route path="/audit" element={
             <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
               <AppLayout><AuditPage /></AppLayout>
@@ -114,6 +123,12 @@ function App() {
           <Route path="/biometric-devices" element={
             <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
               <AppLayout><PointeusesPage /></AppLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/configuration" element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+              <AppLayout><ConfigurationPage /></AppLayout>
             </ProtectedRoute>
           } />
 
@@ -139,6 +154,12 @@ function App() {
           <Route path="/mes-conges-chef" element={
             <ProtectedRoute allowedRoles={['chef_service']}>
               <AppLayout><CongesChefPage /></AppLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/mes-documents" element={
+            <ProtectedRoute allowedRoles={['employe', 'chef_service']}>
+              <AppLayout><EmployeeDocumentsPage /></AppLayout>
             </ProtectedRoute>
           } />
 

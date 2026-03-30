@@ -11,6 +11,7 @@ const NAV_CONFIG = {
         { path: '/super-admin', icon: '🔧', label: 'Gestion Système' },
         { path: '/dashboard', icon: '📊', label: 'Dashboard Admin' },
         { path: '/biometric-devices', icon: '📠', label: 'Pointeuses' },
+        { path: '/configuration', icon: '⚙️', label: 'Configuration' },
       ]
     },
     {
@@ -27,6 +28,7 @@ const NAV_CONFIG = {
         { path: '/pointages', icon: '✅', label: 'Pointages' },
         { path: '/conges', icon: '🏖️', label: 'Congés' },
         { path: '/salaires', icon: '💳', label: 'Salaires' },
+        { path: '/admin-documents', icon: '📄', label: 'Documents' },
       ]
     },
     {
@@ -43,6 +45,7 @@ const NAV_CONFIG = {
       items: [
         { path: '/dashboard', icon: '📊', label: 'Dashboard' },
         { path: '/biometric-devices', icon: '📠', label: 'Pointeuses' },
+        { path: '/configuration', icon: '⚙️', label: 'Configuration' },
       ]
     },
     {
@@ -59,6 +62,7 @@ const NAV_CONFIG = {
         { path: '/pointages', icon: '✅', label: 'Pointages' },
         { path: '/conges', icon: '🏖️', label: 'Congés' },
         { path: '/salaires', icon: '💳', label: 'Salaires' },
+        { path: '/admin-documents', icon: '📄', label: 'Documents' },
       ]
     },
     {
@@ -75,6 +79,7 @@ const NAV_CONFIG = {
       items: [
         { path: '/employee-dashboard', icon: '📊', label: 'Mon Dashboard' },
         { path: '/mes-conges', icon: '🏖️', label: 'Mes Congés' },
+        { path: '/mes-documents', icon: '📄', label: 'Mes Documents' },
         { path: '/notifications', icon: '🔔', label: 'Notifications', hasNotif: true },
       ]
     },
@@ -90,6 +95,7 @@ const NAV_CONFIG = {
       section: 'Personnel',
       items: [
         { path: '/mes-conges-chef', icon: '🏖️', label: 'Mes Congés' },
+        { path: '/mes-documents', icon: '📄', label: 'Mes Documents' },
         { path: '/notifications', icon: '🔔', label: 'Notifications', hasNotif: true },
       ]
     },
@@ -194,7 +200,10 @@ const Navigation = () => {
       <div className={sidebarClass}>
         {/* Header */}
         <div className="sidebar-header">
-          <div className="sidebar-logo">🏢</div>
+          <div className="sidebar-logo">
+            <img src="/lpe-logo.png" alt="LPE Logo" style={{ width: '40px', height: 'auto' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+            <span style={{ display: 'none', fontSize: '24px' }}>🏢</span>
+          </div>
           <span className="sidebar-title">HR Manager</span>
           <button
             className="sidebar-toggle"

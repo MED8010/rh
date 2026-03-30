@@ -8,7 +8,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['conge_demande', 'conge_approuve', 'conge_refuse', 'stage_demande', 'stage_approuve', 'stage_refuse', 'salaire_disponible', 'autre'],
+    enum: ['conge_demande', 'conge_approuve', 'conge_refuse', 'stage_demande', 'stage_approuve', 'stage_refuse', 'salaire_disponible', 'document_demande', 'document_traite', 'document_rejete', 'autre'],
     required: true
   },
   titre: {

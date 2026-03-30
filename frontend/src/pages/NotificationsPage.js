@@ -5,13 +5,17 @@ import '../styles/Dashboard.css';
 const NOTIF_ICONS = {
   conge_demande: '📝', conge_approuve: '✅', conge_refuse: '❌',
   stage_demande: '📚', stage_approuve: '✅', stage_refuse: '❌',
-  salaire_disponible: '💰', autre: 'ℹ️'
+  salaire_disponible: '💰', 
+  document_demande: '📄', document_traite: '✅', document_rejete: '❌',
+  autre: 'ℹ️'
 };
 
 const NOTIF_VARIANTS = {
   conge_demande: 'info', conge_approuve: 'success', conge_refuse: 'danger',
   stage_demande: 'info', stage_approuve: 'success', stage_refuse: 'danger',
-  salaire_disponible: 'accent', autre: 'neutral'
+  salaire_disponible: 'accent', 
+  document_demande: 'info', document_traite: 'success', document_rejete: 'danger',
+  autre: 'neutral'
 };
 
 const NotificationsPage = () => {

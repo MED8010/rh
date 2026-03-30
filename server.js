@@ -16,6 +16,9 @@ const auditRoutes = require('./backend/routes/auditRoutes');
 const notificationRoutes = require('./backend/routes/notifications');
 const userRoutes = require('./backend/routes/userRoutes');
 const zkRoutes = require('./backend/routes/zkRoutes');
+const documentRoutes = require('./backend/routes/documentRoutes');
+const documentTypeRoutes = require('./backend/routes/documentTypeRoutes');
+const documentTypeController = require('./backend/controllers/documentTypeController');
 const { initSync } = require('./backend/services/zkService');
 
 // Start Server function
@@ -31,6 +34,7 @@ const startServer = async () => {
     app.use(express.json());
     app.use(auditMiddleware);
     app.use('/uploads', express.static(path.join(__dirname, 'backend/uploads')));
+    app.use('/uploads/documents', express.static(path.join(__dirname, 'backend/uploads/documents')));
 
     // Routes
     app.use('/api/auth', authRoutes);
@@ -43,6 +47,8 @@ const startServer = async () => {
     app.use('/api/notifications', notificationRoutes);
     app.use('/api/users', userRoutes);
     app.use('/api/biometric', zkRoutes);
+    app.use('/api/documents', documentRoutes);
+    app.use('/api/document-types', documentTypeRoutes);
 
     // Route de test
     app.get('/api/health', (req, res) => {
@@ -60,6 +66,8 @@ const startServer = async () => {
       console.log(`✓ Serveur démarré sur le port ${PORT}`);
       // Initialiser la synchronisation biométrique
       initSync();
+      // Seed initial document types
+      documentTypeController.seedTypes();
     });
   } catch (err) {
     console.error('❌ Échec du démarrage du serveur:', err);

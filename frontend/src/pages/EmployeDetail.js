@@ -70,7 +70,7 @@ const EmployeDetail = () => {
                     </div>
                     <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 5 }}>
-                            <h2 style={{ margin: 0, fontSize: 22 }}>{employe.prenom} {employe.nom}</h2>
+                            <h2 style={{ margin: 0, fontSize: 22, color: 'var(--text-primary)' }}>{employe.prenom} {employe.nom}</h2>
                             <span className={`badge ${employe.statut === 'actif' ? 'badge-success' : 'badge-warning'}`}>
                                 ● {employe.statut}
                             </span>
@@ -81,7 +81,7 @@ const EmployeDetail = () => {
                     </div>
                     <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Date d'embauche</div>
-                        <div style={{ fontSize: 16, fontWeight: 600 }}>{new Date(employe.date_embauche).toLocaleDateString()}</div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{new Date(employe.date_embauche).toLocaleDateString()}</div>
                     </div>
                 </div>
             </div>
@@ -110,16 +110,16 @@ const EmployeDetail = () => {
                             <h3>Détails Professionnels</h3>
                             <div className="profile-details-grid" style={{ gridTemplateColumns: '1fr', border: 'none', marginTop: 10, padding: 0 }}>
                                 <div className="detail-item">
-                                    <label>Prix Horaire base</label>
-                                    <span>{employe.prix_heure} DT / heure</span>
+                                    <label style={{ color: 'var(--text-secondary)' }}>Prix Horaire base :</label>
+                                    <span style={{ color: 'var(--text-primary)' }}>{employe.prix_heure} DT / heure </span>
                                 </div>
                                 <div className="detail-item">
-                                    <label>Service</label>
-                                    <span>{employe.service?.nom_service || '—'}</span>
+                                    <label style={{ color: 'var(--text-secondary)' }}>Service :</label>
+                                    <span style={{ color: 'var(--text-primary)' }}>{employe.service?.nom_service || '—'}</span>
                                 </div>
                                 <div className="detail-item">
-                                    <label>UAP</label>
-                                    <span>{employe.uap?.nom_uap || '—'}</span>
+                                    <label style={{ color: 'var(--text-secondary)' }}>UAP :</label>
+                                    <span style={{ color: 'var(--text-primary)' }}>{employe.uap?.nom_uap || '—'}</span>
                                 </div>
                             </div>
                         </div>
@@ -324,25 +324,29 @@ const EmployeDetail = () => {
         }
 
         .tab-btn {
-          padding: 12px 20px;
+          padding: 12px 24px;
           background: transparent;
           border: none;
-          color: var(--text-muted);
+          color: var(--text-secondary);
           font-weight: 600;
-          font-size: 14px;
+          font-size: 14.5px;
           cursor: pointer;
           border-radius: 12px 12px 0 0;
-          transition: all 0.2s;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           position: relative;
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
 
         .tab-btn:hover {
           color: var(--primary);
-          background: var(--bg-card);
+          background: var(--primary-glow);
         }
 
         .tab-btn.active {
           color: var(--primary);
+          background: var(--primary-glow);
         }
 
         .tab-btn.active::after {

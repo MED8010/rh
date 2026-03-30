@@ -22,7 +22,16 @@ frontend/build/
 tmpclaude-*
 token.json
 superadmin_token.json
+admin_token.json
+*.zip
 *.txt
 err.txt
 clean-seed.js
 test_api.js
+test_*_api.js
+test_*.js
+*.json
+!package.json
+!package-lock.json
+!frontend/package.json
+!frontend/package-lock.json

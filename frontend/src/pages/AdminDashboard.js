@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../services/api';
 import { Pie } from 'react-chartjs-2';
@@ -23,6 +24,7 @@ ChartJS.register(
 
 const AdminDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [timeStats, setTimeStats] = useState(null);
   const [salaireStats, setSalaireStats] = useState(null);
@@ -167,43 +169,43 @@ const AdminDashboard = () => {
   const kpis = [
     {
       icon: '👥', label: 'Total Employés', value: timeStats?.totalEmployes || stats?.totalEmployes || 0,
-      subtitle: 'employés actifs', variant: 'kpi-primary',
+      subtitle: 'employés actifs', variant: 'kpi-primary', path: '/employes'
     },
     {
       icon: '✅', label: 'Présents', value: timeStats?.presentCount || 0,
-      subtitle: `Taux: ${timeStats?.tauxPresence ?? 0}%`, variant: 'kpi-success',
+      subtitle: `Taux: ${timeStats?.tauxPresence ?? 0}%`, variant: 'kpi-success', path: '/pointages'
     },
     {
       icon: '⚠️', label: 'Retards', value: timeStats?.retardCount || 0,
-      subtitle: `Taux: ${timeStats?.tauxRetard ?? 0}%`, variant: 'kpi-warning',
+      subtitle: `Taux: ${timeStats?.tauxRetard ?? 0}%`, variant: 'kpi-warning', path: '/pointages'
     },
     {
       icon: '❌', label: 'Absents', value: timeStats?.absenceCount || 0,
-      subtitle: `Taux: ${timeStats?.tauxAbsenteisme ?? 0}%`, variant: 'kpi-danger',
+      subtitle: `Taux: ${timeStats?.tauxAbsenteisme ?? 0}%`, variant: 'kpi-danger', path: '/pointages'
     },
     {
       icon: '💰', label: 'Masse Salariale', value: `${(salaireStats?.masseSalariale || 0).toFixed(0)} DT`,
-      subtitle: 'période sélectionnée', variant: 'kpi-primary',
+      subtitle: 'période sélectionnée', variant: 'kpi-primary', path: '/salary-analytics'
     },
     {
       icon: '📊', label: 'Salaire Moyen', value: `${(salaireStats?.salaireMoyen || 0).toFixed(0)} DT`,
-      subtitle: 'par employé', variant: 'kpi-purple',
+      subtitle: 'par employé', variant: 'kpi-purple', path: '/salary-analytics'
     },
     {
       icon: '⏰', label: 'Heures Sup.', value: `${(salaireStats?.heuresSup?.total || 0).toFixed(1)}h`,
-      subtitle: 'heures supplémentaires', variant: 'kpi-warning',
+      subtitle: 'heures supplémentaires', variant: 'kpi-warning', path: '/salary-analytics'
     },
     {
       icon: '💸', label: 'Coût Heures Sup.', value: `${(salaireStats?.heuresSup?.cout || 0).toFixed(0)} DT`,
-      subtitle: 'budget heures sup.', variant: 'kpi-danger',
+      subtitle: 'budget heures sup.', variant: 'kpi-danger', path: '/salary-analytics'
     },
     {
       icon: '🎁', label: 'Total Primes', value: `${(salaireStats?.primes?.total || 0).toFixed(0)} DT`,
-      subtitle: 'primes versées', variant: 'kpi-accent',
+      subtitle: 'primes versées', variant: 'kpi-accent', path: '/salary-analytics'
     },
     {
       icon: '⭐', label: 'Moyenne Primes', value: `${(salaireStats?.primes?.moyenne || 0).toFixed(0)} DT`,
-      subtitle: 'par employé', variant: 'kpi-purple',
+      subtitle: 'par employé', variant: 'kpi-purple', path: '/salary-analytics'
     },
   ];
 
@@ -293,7 +295,7 @@ const AdminDashboard = () => {
       {/* KPI Grid */}
       <div className="kpi-container">
         {kpis.map((kpi, i) => (
-          <div key={i} className={`kpi-card ${kpi.variant}`}>
+          <div key={i} className={`kpi-card ${kpi.variant} clickable-card`} onClick={() => kpi.path && navigate(kpi.path)}>
             <div className="kpi-card-top">
               <div className="kpi-icon-box">{kpi.icon}</div>
             </div>
@@ -352,7 +354,7 @@ const AdminDashboard = () => {
               {timeStats?.distributionGeographique?.slice(0, 5).map((item, i) => (
                 <div key={i} className="geo-stat-item">
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>{item.ville}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600 , color: 'var(--text-primary)' }}>{item.ville}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>{item.count}</span>
                   </div>
                   <div className="progress-bar" style={{ height: 6, background: 'var(--bg-hover)', borderRadius: 10, overflow: 'hidden' }}>

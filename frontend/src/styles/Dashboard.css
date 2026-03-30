@@ -122,6 +122,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+}
+
 /* ========== APP LAYOUT (Sidebar + Main) ========== */
 .app-layout {
   display: flex;
@@ -596,6 +600,7 @@ body.sidebar-collapsed .main-content {
 
 /* ========== DASHBOARD CONTAINER ========== */
 .dashboard-container {
+  
   padding: 32px;
   max-width: 1440px;
   margin: 0 auto;
@@ -709,6 +714,21 @@ body.sidebar-collapsed .main-content {
   transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
   border-color: var(--primary);
+}
+
+.clickable-card {
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.clickable-card:hover {
+  filter: brightness(1.02);
+  transform: translateY(-5px);
+}
+
+.clickable-card:active {
+  transform: translateY(-2px);
+  filter: brightness(0.98);
 }
 
 .kpi-card:hover::before {
@@ -1273,7 +1293,7 @@ button.btn-secondary:hover {
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  background: var(--bg-card);
+  background: var(--text-sidebar);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
@@ -1290,13 +1310,13 @@ button.btn-secondary:hover {
   background: transparent;
   outline: none;
   font-size: 13.5px;
-  color: var(--text-primary);
+  color: var(--bg-sidebar);
   font-family: inherit;
   width: 100%;
 }
 
 .search-bar input::placeholder {
-  color: var(--text-muted);
+  color: var(--bg-sidebar);
 }
 
 .search-icon {
@@ -1424,14 +1444,25 @@ button.btn-secondary:hover {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
-  padding-bottom: 16px;
+  padding: 22px 28px;
   border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  z-index: 10;
+  margin: -32px -32px 24px -32px; /* Pull header to edges of modal-content padding */
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 
 .modal-header h3 {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
+  margin: 0;
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: -0.4px;
 }
 
 .modal-close {
@@ -1887,24 +1918,6 @@ body.sidebar-collapsed .top-navbar {
   max-width: 900px;
 }
 
-.modal-header {
-  padding: 24px 32px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: sticky;
-  top: 0;
-  background: var(--bg-card);
-  z-index: 10;
-}
-
-.modal-header h3 {
-  font-size: 20px;
-  font-weight: 800;
-  margin: 0;
-  letter-spacing: -0.5px;
-}
 
 .close-btn {
   background: var(--bg-hover);
@@ -2136,11 +2149,6 @@ body.sidebar-collapsed .top-navbar {
 
 /* Integrated Top Navbar dropdown menu styles moved to top */
 
-/* Dark mode overrides for view button */
-body.dark-mode .btn-view:hover {
-  color: #0f172a;
-}
-
 /* ========== LOADING OVERLAY ========== */
 .loading-overlay {
   position: absolute;
@@ -2248,4 +2256,74 @@ body.dark-mode .loading-overlay {
 
 .filter-select:focus, .filter-input:focus {
   border-color: var(--primary);
+}
+
+/* Action Buttons in Tables */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-view, .btn-edit, .btn-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  font-family: inherit;
+}
+
+/* Btn View - Indigo/Primary */
+.btn-view {
+  background: var(--primary-glow);
+  color: var(--primary);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.btn-view:hover {
+  background: var(--primary);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+/* Btn Edit - Emerald/Success */
+.btn-edit {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.btn-edit:hover {
+  background: var(--success);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+/* Btn Delete - Rose/Danger */
+.btn-delete {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.btn-delete:hover {
+  background: var(--danger);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+/* Dark mode specific tweaks for buttons */
+body.dark-mode .btn-view:hover,
+body.dark-mode .btn-edit:hover,
+body.dark-mode .btn-delete:hover {
+  color: #ffffff;
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../services/api';
 import '../styles/Dashboard.css';
@@ -32,6 +32,9 @@ const EmployesPage = () => {
   const [formData, setFormData] = useState(emptyForm);
   const [services, setServices] = useState([]);
   const [uaps, setUaps] = useState([]);
+  const fileInputRef = useRef(null);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     loadEmployes();
@@ -149,7 +152,7 @@ const EmployesPage = () => {
       prix_heure: emp.prix_heure,
       service: emp.service?._id || '',
       uap: emp.uap?._id || '',
-      email: emp.email || '',
+      email: emp.email || (emp.user ? emp.user.email : '') || '',
       telephone: emp.telephone || '',
       adresse: emp.adresse || '',
       statut: emp.statut,
@@ -172,6 +175,75 @@ const EmployesPage = () => {
       } catch (error) {
         setError('Erreur lors de la suppression');
       }
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setExporting(true);
+      const response = await apiClient.get('/employes/export', {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'liste_employes.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showSuccess('✅ Exportation réussie');
+    } catch (error) {
+      console.error('Export error:', error);
+      let errorMsg = 'Erreur lors de l\'exportation';
+      
+      // Handle blob error response
+      if (error.response?.data instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const errJson = JSON.parse(reader.result);
+            setError(`❌ ${errJson.message || errorMsg}`);
+          } catch (e) {
+            setError(`❌ ${errorMsg}`);
+          }
+        };
+        reader.readAsText(error.response.data);
+      } else {
+        setError(`❌ ${error.response?.data?.message || errorMsg}`);
+      }
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      setImporting(true);
+      setError('');
+      const response = await apiClient.post('/employes/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      showSuccess(`✅ Importation réussie : ${response.data.details.created} créés, ${response.data.details.updated} mis à jour`);
+      loadEmployes();
+    } catch (error) {
+      setError(error.response?.data?.message || 'Erreur lors de l\'importation');
+    } finally {
+      setImporting(false);
+      e.target.value = ''; // Reset input
     }
   };
 
@@ -199,6 +271,30 @@ const EmployesPage = () => {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            className="btn-secondary"
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            {exporting ? '⏳...' : '📤 Export Excel'}
+          </button>
+          
+          <button
+            className="btn-secondary"
+            onClick={handleImportClick}
+            disabled={importing}
+          >
+            {importing ? '⏳...' : '📥 Import Excel'}
+          </button>
+          
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            style={{ display: 'none' }} 
+            accept=".xlsx, .xls, .csv"
+            onChange={handleFileChange}
+          />
+
           <button
             className="btn-primary"
             onClick={handleAddNew}
@@ -341,29 +437,27 @@ const EmployesPage = () => {
                   </div>
                 </div>
 
-                {/* Section 4: Sécurité & Accès (Only on creation) */}
-                {!editingId && (
-                  <div className="form-section-group special-section">
-                    <h4 className="section-title"><span className="icon">🔐</span> Sécurité & Accès</h4>
-                    <div className="form-grid">
-                      <div className="form-group">
-                        <label>Mot de Passe <span className="required">*</span></label>
-                        <input type="password" name="password" value={formData.password}
-                          onChange={handleChange} placeholder="••••••••"
-                          required minLength="6" />
-                        <small className="field-hint">Min. 6 caractères</small>
-                      </div>
-                      <div className="form-group">
-                        <label>Rôle Système <span className="required">*</span></label>
-                        <select name="role" value={formData.role} onChange={handleChange} required>
-                          <option value="employe">Collaborateur (Standard)</option>
-                          <option value="chef_service">Responsable (Chef de Service)</option>
-                          <option value="admin">Gestionnaire (Admin RH)</option>
-                        </select>
-                      </div>
+                {/* Section 4: Sécurité & Accès */}
+                <div className="form-section-group special-section">
+                  <h4 className="section-title"><span className="icon">🔐</span> Sécurité & Accès</h4>
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label>{editingId ? 'Nouveau Mot de Passe' : 'Mot de Passe'} {!editingId && <span className="required">*</span>}</label>
+                      <input type="password" name="password" value={formData.password}
+                        onChange={handleChange} placeholder={editingId ? "Laissez vide pour conserver" : "••••••••"}
+                        required={!editingId} minLength="6" />
+                      <small className="field-hint">Min. 6 caractères</small>
+                    </div>
+                    <div className="form-group">
+                      <label>Rôle Système <span className="required">*</span></label>
+                      <select name="role" value={formData.role} onChange={handleChange} required>
+                        <option value="employe">Collaborateur (Standard)</option>
+                        <option value="chef_service">Responsable (Chef de Service)</option>
+                        <option value="admin">Gestionnaire (Admin RH)</option>
+                      </select>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
 
               <div className="modal-footer">
@@ -431,8 +525,6 @@ const EmployesPage = () => {
           <option value="">Tous les statuts</option>
           <option value="actif">Actif</option>
           <option value="inactif">Inactif</option>
-          <option value="conge">Congé</option>
-          <option value="suspendu">Suspendu</option>
         </select>
       </div>
 
@@ -459,7 +551,6 @@ const EmployesPage = () => {
                   <th>Service</th>
                   <th>UAP</th>
                   <th>Ville / Adresse</th>
-                  <th>Prix/h</th>
                   <th>Statut</th>
                   <th style={{ textAlign: 'center' }}>Actions</th>
                 </tr>
@@ -501,7 +592,7 @@ const EmployesPage = () => {
                         })()}
                       </div>
                     </td>
-                    <td><strong>{emp.prix_heure} DT</strong></td>
+                    
                     <td>{STATUT_BADGE[emp.statut] || emp.statut}</td>
                     <td>
                       <div className="action-buttons" style={{ justifyContent: 'center' }}>

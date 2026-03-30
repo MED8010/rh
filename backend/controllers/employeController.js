@@ -1,8 +1,13 @@
 const Employe = require('../models/Employe');
 const User = require('../models/User');
+const Service = require('../models/Service');
+const UAP = require('../models/UAP');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const XLSX = require('xlsx');
+
+// Configuration de multer pour les photos de profil
 
 // Configuration de multer pour les photos de profil
 const storage = multer.diskStorage({
@@ -32,6 +37,32 @@ const upload = multer({
     cb(new Error('Seules les images (jpeg, jpg, png, webp) sont autorisées'));
   }
 }).single('photo');
+
+// Configuration de multer pour les fichiers Excel
+const excelStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = 'backend/uploads/excel';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, 'import-' + Date.now() + path.extname(file.originalname));
+  }
+});
+
+const uploadExcel = multer({
+  storage: excelStorage,
+  fileFilter: (req, file, cb) => {
+    const filetypes = /xlsx|xls|csv/;
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    if (extname) {
+      return cb(null, true);
+    }
+    cb(new Error('Seuls les fichiers Excel (.xlsx, .xls) ou CSV sont autorisés'));
+  }
+}).single('file');
 
 // Créer un employé
 const createEmploye = async (req, res) => {
@@ -409,4 +440,144 @@ const getEmployeStats = async (req, res) => {
   }
 };
 
-module.exports = { createEmploye, getEmployes, getEmploye, updateEmploye, deleteEmploye, getEmployeStats };
+// Exporter les employés en Excel
+const exportEmployes = async (req, res) => {
+  try {
+    const employes = await Employe.find().populate(['service', 'uap']);
+    
+    const data = employes.map(emp => ({
+      'Matricule': emp.matricule,
+      'Nom': emp.nom,
+      'Prénom': emp.prenom,
+      'Email': emp.email || '',
+      'Téléphone': emp.telephone || '',
+      'Service': emp.service ? emp.service.nom_service : '',
+      'UAP': emp.uap ? emp.uap.nom_uap : '',
+      'Statut': emp.statut,
+      'Prix/Heure (DT)': emp.prix_heure,
+      'Solde Congé Restant': emp.solde_conge_restant,
+      'Date Embauche': emp.date_embauche ? new Date(emp.date_embauche).toLocaleDateString() : '',
+      'Adresse': emp.adresse || ''
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Employés');
+
+    // Générer le buffer
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Disposition', 'attachment; filename=employes.xlsx');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (error) {
+    console.error('Erreur export Excel:', error);
+    res.status(500).json({ message: 'Erreur lors de l\'exportation Excel', error: error.message });
+  }
+};
+
+// Importer les employés via Excel
+const importEmployes = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'Aucun fichier n\'a été téléchargé' });
+  }
+
+  try {
+    const workbook = XLSX.readFile(req.file.path);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rawData = XLSX.utils.sheet_to_json(sheet);
+
+    // Charger services et UAPs pour mise en correspondance
+    const [services, uaps] = await Promise.all([
+      Service.find(),
+      UAP.find()
+    ]);
+
+    const results = {
+      created: 0,
+      updated: 0,
+      errors: []
+    };
+
+    for (const row of rawData) {
+      try {
+        const matricule = row['Matricule'];
+        if (!matricule) continue;
+
+        const nom = row['Nom'] || '';
+        const prenom = row['Prénom'] || '';
+        const email = row['Email'] || '';
+        const serviceName = row['Service'];
+        const uapName = row['UAP'];
+        const prixHeure = parseFloat(row['Prix/Heure (DT)'] || 0);
+
+        // Trouver les IDs pour service et UAP
+        const service = services.find(s => s.nom_service.toLowerCase() === (serviceName || '').toLowerCase());
+        const uap = uaps.find(u => u.nom_uap.toLowerCase() === (uapName || '').toLowerCase());
+
+        if (!service || !uap) {
+          results.errors.push(`Matricule ${matricule}: Service ou UAP introuvable (${serviceName}, ${uapName})`);
+          continue;
+        }
+
+        const employeData = {
+          nom,
+          prenom,
+          email,
+          telephone: row['Téléphone'] || '',
+          adresse: row['Adresse'] || '',
+          prix_heure: prixHeure,
+          service: service._id,
+          uap: uap._id,
+          statut: row['Statut'] || 'actif',
+          date_embauche: row['Date Embauche'] ? new Date(row['Date Embauche']) : new Date()
+        };
+
+        let employe = await Employe.findOne({ matricule });
+
+        if (employe) {
+          Object.assign(employe, employeData);
+          employe.updatedAt = new Date();
+          await employe.save();
+          results.updated++;
+        } else {
+          employe = new Employe({
+            matricule,
+            ...employeData,
+            solde_conge_total: parseFloat(row['Solde Congé Total'] || 22),
+            solde_conge_restant: parseFloat(row['Solde Congé Restant'] || row['Solde Congé Total'] || 22)
+          });
+          await employe.save();
+          results.created++;
+        }
+      } catch (err) {
+        results.errors.push(`Erreur ligne ${rawData.indexOf(row) + 2}: ${err.message}`);
+      }
+    }
+
+    // Supprimer le fichier temporaire
+    fs.unlinkSync(req.file.path);
+
+    res.json({
+      message: 'Importation terminée',
+      details: results
+    });
+  } catch (error) {
+    console.error('Erreur import Excel:', error);
+    if (req.file) fs.unlinkSync(req.file.path);
+    res.status(500).json({ message: 'Erreur lors de l\'importation', error: error.message });
+  }
+};
+
+module.exports = { 
+  createEmploye, 
+  getEmployes, 
+  getEmploye, 
+  updateEmploye, 
+  deleteEmploye, 
+  getEmployeStats,
+  exportEmployes,
+  importEmployes,
+  uploadExcel
+};
