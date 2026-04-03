@@ -3,441 +3,456 @@ import { useAuth } from '../context/AuthContext';
 import apiClient from '../services/api';
 import '../styles/Dashboard.css';
 
+const REJECT_REASONS = [
+  'Effectifs insuffisants durant cette période',
+  'Chevauchement avec d\'autres congés',
+  'Période non autorisée',
+  'Autre raison',
+];
+
 const ChefServiceDashboard = () => {
   const { user } = useAuth();
-  const [conges, setConges] = useState([]);
-  const [stages, setStages] = useState([]);
-  const [employes, setEmployes] = useState([]);
+  const [teamData, setTeamData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('conges');
+  const [activeTab, setActiveTab] = useState('equipe');
   const [error, setError] = useState('');
-  const [selectedConge, setSelectedConge] = useState(null);
-  const [selectedStage, setSelectedStage] = useState(null);
-  const [motifRefus, setMotifRefus] = useState('');
+  const [feedbackMsg, setFeedbackMsg] = useState('');
+  const [rejectModal, setRejectModal] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
 
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { loadTeamData(); }, []); // eslint-disable-line
 
-  const loadData = async () => {
+  const loadTeamData = async () => {
     try {
-      const [congesRes, stagesRes, employesRes] = await Promise.all([
-        apiClient.get('/conges?statut=en_attente'),
-        apiClient.get('/stages'),
-        apiClient.get('/employes')
-      ]);
-      setConges(congesRes.data);
-      setStages(stagesRes.data);
-      setEmployes(employesRes.data);
-    } catch (error) {
-      console.error('Erreur chargement:', error);
-      setError('Erreur lors du chargement des données');
+      setLoading(true);
+      const res = await apiClient.get('/employes/my-team');
+      setTeamData(res.data);
+      setError('');
+    } catch (err) {
+      console.error('Erreur chargement équipe:', err);
+      setError('Erreur lors du chargement des données de l\'équipe');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApproveConge = async (congeId) => {
+  const showFeedback = (msg) => {
+    setFeedbackMsg(msg);
+    setTimeout(() => setFeedbackMsg(''), 3000);
+  };
+
+  const handleApproveConge = async (id) => {
     try {
-      await apiClient.put(`/conges/${congeId}`, { statut: 'approuve' });
-      setConges(conges.filter(c => c._id !== congeId));
-      setError('');
-    } catch (error) {
-      setError('Erreur lors de l\'approbation');
+      await apiClient.put(`/conges/${id}/approve`);
+      showFeedback('✅ Congé approuvé avec succès');
+      loadTeamData();
+    } catch (err) {
+      showFeedback('❌ Erreur lors de l\'approbation');
     }
   };
 
-  const handleRejectConge = async (congeId) => {
+  const handleRejectConge = async () => {
+    if (!rejectReason.trim()) return;
     try {
-      await apiClient.put(`/conges/${congeId}`, { statut: 'refuse', motif_refus: motifRefus });
-      setConges(conges.filter(c => c._id !== congeId));
-      setSelectedConge(null);
-      setMotifRefus('');
-      setError('');
-    } catch (error) {
-      setError('Erreur lors du refus');
-    }
-  };
-
-  const handleApproveStage = async (stageId) => {
-    try {
-      await apiClient.put(`/stages/${stageId}/approve`);
-      setStages(stages.map(s => s._id === stageId ? { ...s, statut: 'approuve' } : s));
-      setError('');
-    } catch (error) {
-      setError('Erreur lors de l\'approbation');
-    }
-  };
-
-  const handleRejectStage = async (stageId) => {
-    try {
-      await apiClient.put(`/stages/${stageId}/reject`, { motif_refus: motifRefus });
-      setStages(stages.map(s => s._id === stageId ? { ...s, statut: 'refuse' } : s));
-      setSelectedStage(null);
-      setMotifRefus('');
-      setError('');
-    } catch (error) {
-      setError('Erreur lors du refus');
+      await apiClient.put(`/conges/${rejectModal}/reject`, { commentaire_rejet: rejectReason });
+      showFeedback('Congé refusé');
+      setRejectModal(null);
+      setRejectReason('');
+      loadTeamData();
+    } catch (err) {
+      showFeedback('❌ Erreur lors du refus');
     }
   };
 
   if (loading) {
-    return <div className="loading">Chargement...</div>;
+    return <div className="loading"><div className="spinner"></div>Chargement de votre équipe...</div>;
   }
 
-  const enAttenteConges = conges.filter(c => c.statut === 'en_attente').length;
-  const enAttenteStages = stages.filter(s => s.statut === 'en_attente').length;
+  if (error) {
+    return (
+      <div className="dashboard-container">
+        <div className="error-message">⚠️ {error}</div>
+        <button className="btn-primary" onClick={loadTeamData}>🔄 Réessayer</button>
+      </div>
+    );
+  }
+
+  const { service, stats, membres, conges } = teamData || {};
+  const congesEnAttente = conges?.filter(c => c.statut === 'demande') || [];
+  const congesApprouves = conges?.filter(c => c.statut === 'approuve') || [];
+
+  const statutBadge = (statut) => {
+    switch (statut) {
+      case 'present': return <span className="badge badge-success">✅ Présent</span>;
+      case 'absent': return <span className="badge badge-danger">❌ Absent</span>;
+      case 'conge': return <span className="badge badge-warning">🏖️ En congé</span>;
+      default: return <span className="badge badge-neutral">—</span>;
+    }
+  };
+
+  const tabs = [
+    { id: 'equipe', label: '👥 Mon Équipe', count: stats?.total },
+    { id: 'pointages', label: '🕐 Présence du Jour', count: stats?.presents },
+    { id: 'conges', label: '🏖️ Congés', count: congesEnAttente.length },
+  ];
 
   return (
-    <div className="dashboard">
-      <h1>📋 Chef de Service Dashboard</h1>
-      <p className="welcome-text">
-        Bienvenue, {user?.employe?.prenom} {user?.employe?.nom}
-      </p>
-
-      {error && (
-        <div style={{
-          background: '#fff3cd',
-          color: '#856404',
-          padding: '12px',
-          borderRadius: '5px',
-          marginBottom: '20px'
-        }}>
-          ⚠️ {error}
+    <div className="dashboard-container">
+      {/* Reject Modal */}
+      {rejectModal && (
+        <div className="modal-overlay" onClick={() => setRejectModal(null)}>
+          <div className="modal-content animate-slide-in" onClick={e => e.stopPropagation()} style={{ 
+            maxWidth: 460, background: 'var(--bg-card)', border: '1px solid var(--border)'
+          }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid var(--border)' }}>
+              <h3 style={{ color: 'var(--text-primary)' }}>❌ Refuser la Demande</h3>
+              <button className="modal-close" onClick={() => setRejectModal(null)}>✕</button>
+            </div>
+            <div style={{ padding: '20px 24px' }}>
+              <p style={{ marginBottom: 16, color: 'var(--text-secondary)', fontSize: 14 }}>
+                Veuillez indiquer la raison du refus :
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                {REJECT_REASONS.map(r => (
+                  <label key={r} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 14px', borderRadius: 8, cursor: 'pointer',
+                    border: `1px solid ${rejectReason === r ? 'var(--primary)' : 'var(--border)'}`,
+                    background: rejectReason === r ? 'var(--primary-glow)' : 'var(--bg-hover)',
+                    color: 'var(--text-primary)', transition: 'all 0.2s ease'
+                  }}>
+                    <input type="radio" value={r} checked={rejectReason === r} onChange={() => setRejectReason(r)} />
+                    <span style={{ fontSize: 13.5 }}>{r}</span>
+                  </label>
+                ))}
+              </div>
+              <textarea
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                placeholder="Ou saisissez une raison personnalisée..."
+                style={{
+                  width: '100%', padding: 12, borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'var(--bg-hover)',
+                  color: 'var(--text-primary)', fontFamily: 'inherit', resize: 'vertical', minHeight: 80
+                }}
+              />
+              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setRejectModal(null)}>Annuler</button>
+                <button className="btn-delete" style={{ flex: 1 }} onClick={handleRejectConge}>Confirmer le Refus</button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      <div className="kpi-grid">
-        <div className="kpi-card">
-          <h3>Congés en Attente</h3>
-          <div className="kpi-value" style={{ color: '#f4a261' }}>{enAttenteConges}</div>
-          <p className="kpi-label">À approuver</p>
+      {/* Header */}
+      <div className="page-header">
+        <div className="page-title-group">
+          <h1>📋 Dashboard Chef de Service</h1>
+          <p className="page-subtitle">
+            Bienvenue, {user?.employe?.prenom} {user?.employe?.nom} — Service : <strong>{service?.nom_service || '—'}</strong>
+          </p>
         </div>
+        <button className="btn-primary" onClick={loadTeamData}>🔄 Actualiser</button>
+      </div>
 
-        <div className="kpi-card">
-          <h3>Demandes de Stage</h3>
-          <div className="kpi-value" style={{ color: '#667eea' }}>{enAttenteStages}</div>
-          <p className="kpi-label">À traiter</p>
+      {feedbackMsg && <div className="success-message">{feedbackMsg}</div>}
+
+      {/* KPIs */}
+      <div className="kpi-container">
+        <div className="kpi-card kpi-primary">
+          <div className="kpi-card-top"><div className="kpi-icon-box">👥</div></div>
+          <div><p className="kpi-label">Total Équipe</p><p className="kpi-value">{stats?.total || 0}</p></div>
         </div>
-
-        <div className="kpi-card">
-          <h3>Total Employés</h3>
-          <div className="kpi-value">{employes.length}</div>
-          <p className="kpi-label">Sous ma supervision</p>
+        <div className="kpi-card kpi-success">
+          <div className="kpi-card-top"><div className="kpi-icon-box">✅</div></div>
+          <div><p className="kpi-label">Présents</p><p className="kpi-value">{stats?.presents || 0}</p><p className="kpi-subtitle">aujourd'hui</p></div>
+        </div>
+        <div className="kpi-card kpi-danger">
+          <div className="kpi-card-top"><div className="kpi-icon-box">❌</div></div>
+          <div><p className="kpi-label">Absents</p><p className="kpi-value">{stats?.absents || 0}</p></div>
+        </div>
+        <div className="kpi-card kpi-warning">
+          <div className="kpi-card-top"><div className="kpi-icon-box">🏖️</div></div>
+          <div><p className="kpi-label">En Congé</p><p className="kpi-value">{stats?.enConge || 0}</p></div>
+        </div>
+        <div className="kpi-card" style={{ borderLeft: '4px solid var(--info)' }}>
+          <div className="kpi-card-top"><div className="kpi-icon-box">⏰</div></div>
+          <div><p className="kpi-label">Retards</p><p className="kpi-value">{stats?.retardsAujourdhui || 0}</p><p className="kpi-subtitle">{stats?.totalRetardMinutes || 0} min au total</p></div>
+        </div>
+        <div className="kpi-card" style={{ borderLeft: '4px solid var(--secondary)' }}>
+          <div className="kpi-card-top"><div className="kpi-icon-box">📝</div></div>
+          <div><p className="kpi-label">Congés en attente</p><p className="kpi-value">{stats?.congesEnAttente || 0}</p><p className="kpi-subtitle">à traiter</p></div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #ddd' }}>
-        <button
-          onClick={() => setActiveTab('conges')}
-          style={{
-            padding: '12px 20px',
-            background: activeTab === 'conges' ? '#667eea' : 'transparent',
-            color: activeTab === 'conges' ? 'white' : '#666',
-            border: 'none',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            borderBottom: activeTab === 'conges' ? '3px solid #667eea' : 'none'
-          }}
-        >
-          🏖️ Congés ({enAttenteConges})
-        </button>
-        <button
-          onClick={() => setActiveTab('stages')}
-          style={{
-            padding: '12px 20px',
-            background: activeTab === 'stages' ? '#667eea' : 'transparent',
-            color: activeTab === 'stages' ? 'white' : '#666',
-            border: 'none',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            borderBottom: activeTab === 'stages' ? '3px solid #667eea' : 'none'
-          }}
-        >
-          📚 Stages ({enAttenteStages})
-        </button>
+      <div className="tabs-container" style={{ marginBottom: 20 }}>
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+            {tab.count !== undefined && (
+              <span className="tab-badge">{tab.count}</span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* Congés Tab */}
+      {/* Tab: Mon Équipe */}
+      {activeTab === 'equipe' && (
+        <div className="section-card">
+          <h3>👥 Membres de l'équipe — {service?.nom_service}
+            <span style={{ marginLeft: 10, fontWeight: 400, fontSize: 13, color: 'var(--text-muted)' }}>
+              {membres?.length || 0} membre(s)
+            </span>
+          </h3>
+          <div className="table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Employé</th>
+                  <th>Matricule</th>
+                  <th>UAP</th>
+                  <th>Statut Emploi</th>
+                  <th>Statut du Jour</th>
+                  <th>Entrée</th>
+                  <th>Sortie</th>
+                  <th>Retard</th>
+                </tr>
+              </thead>
+              <tbody>
+                {membres && membres.length > 0 ? membres.map(m => (
+                  <tr key={m._id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{
+                          width: 32, height: 32, borderRadius: '50%',
+                          background: m.statut_jour === 'present' ? 'var(--success-bg)' : m.statut_jour === 'conge' ? 'var(--warning-bg)' : 'var(--danger-bg)',
+                          color: m.statut_jour === 'present' ? 'var(--success)' : m.statut_jour === 'conge' ? 'var(--warning)' : 'var(--danger)',
+                          fontWeight: 700, fontSize: 11,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          {m.prenom?.[0]}{m.nom?.[0]}
+                        </div>
+                        <strong>{m.prenom} {m.nom}</strong>
+                      </div>
+                    </td>
+                    <td><code style={{ fontSize: 12 }}>{m.matricule}</code></td>
+                    <td>{m.uap?.nom_uap || '—'}</td>
+                    <td>
+                      <span className={`badge ${m.statut === 'actif' ? 'badge-success' : 'badge-neutral'}`}>
+                        {m.statut}
+                      </span>
+                    </td>
+                    <td>{statutBadge(m.statut_jour)}</td>
+                    <td style={{ fontWeight: 600 }}>{m.heure_entree || '—'}</td>
+                    <td>{m.heure_sortie || '—'}</td>
+                    <td>
+                      {m.retard_minutes > 0 ? (
+                        <span style={{ color: 'var(--danger)', fontWeight: 600 }}>
+                          {m.retard_minutes} min
+                        </span>
+                      ) : m.statut_jour === 'present' ? (
+                        <span style={{ color: 'var(--success)' }}>À l'heure</span>
+                      ) : '—'}
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                      Aucun membre dans votre équipe
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Présence du Jour */}
+      {activeTab === 'pointages' && (
+        <div className="section-card">
+          <h3>🕐 Présence du Jour — {new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
+          
+          {/* Résumé visuel */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: 12, marginBottom: 24, padding: 16,
+            background: 'var(--bg-hover)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--success)' }}>{stats?.presents || 0}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Présents</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--danger)' }}>{stats?.absents || 0}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Absents</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--warning)' }}>{stats?.enConge || 0}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>En congé</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--info)' }}>{stats?.retardsAujourdhui || 0}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>En retard</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)' }}>
+                {stats?.total ? Math.round((stats.presents / stats.total) * 100) : 0}%
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Taux de présence</div>
+            </div>
+          </div>
+
+          {/* Barre de progression */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', background: 'var(--bg-hover)' }}>
+              <div style={{ width: `${stats?.total ? (stats.presents / stats.total) * 100 : 0}%`, background: 'var(--success)', transition: 'width 0.5s ease' }} />
+              <div style={{ width: `${stats?.total ? (stats.enConge / stats.total) * 100 : 0}%`, background: 'var(--warning)', transition: 'width 0.5s ease' }} />
+              <div style={{ width: `${stats?.total ? (stats.absents / stats.total) * 100 : 0}%`, background: 'var(--danger)', transition: 'width 0.5s ease' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
+              <span>🟢 Présents</span>
+              <span>🟡 En congé</span>
+              <span>🔴 Absents</span>
+            </div>
+          </div>
+
+          {/* Liste des absents/retards */}
+          {(stats?.absents > 0 || stats?.retardsAujourdhui > 0) && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              {/* Absents */}
+              <div style={{ padding: 16, background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--danger)22' }}>
+                <h4 style={{ color: 'var(--danger)', margin: '0 0 12px' }}>❌ Absents ({membres?.filter(m => m.statut_jour === 'absent').length})</h4>
+                {membres?.filter(m => m.statut_jour === 'absent').map(m => (
+                  <div key={m._id} style={{ padding: '6px 0', borderBottom: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 13 }}>
+                    {m.prenom} {m.nom} — <code>{m.matricule}</code>
+                  </div>
+                ))}
+              </div>
+              {/* Retards */}
+              <div style={{ padding: 16, background: 'var(--warning-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--warning)22' }}>
+                <h4 style={{ color: 'var(--warning)', margin: '0 0 12px' }}>⏰ En retard ({membres?.filter(m => m.retard_minutes > 0).length})</h4>
+                {membres?.filter(m => m.retard_minutes > 0).map(m => (
+                  <div key={m._id} style={{ padding: '6px 0', borderBottom: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: 13 }}>
+                    {m.prenom} {m.nom} — <strong style={{ color: 'var(--danger)' }}>{m.retard_minutes} min</strong> (arrivé à {m.heure_entree})
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab: Congés */}
       {activeTab === 'conges' && (
-        <div className="table-container">
-          <h2>Demandes de Congés à Approuver</h2>
-          {conges.filter(c => c.statut === 'en_attente').length === 0 ? (
-            <p style={{ color: '#999', textAlign: 'center', padding: '20px' }}>Aucune demande en attente</p>
-          ) : (
-            <table style={{ width: '100%' }}>
-              <thead>
-                <tr style={{ background: '#f8f9fa' }}>
-                  <th style={{ padding: '12px', textAlign: 'left' }}>Employé</th>
-                  <th style={{ padding: '12px', textAlign: 'left' }}>Du</th>
-                  <th style={{ padding: '12px', textAlign: 'left' }}>Au</th>
-                  <th style={{ padding: '12px', textAlign: 'left' }}>Type</th>
-                  <th style={{ padding: '12px', textAlign: 'center' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {conges.filter(c => c.statut === 'en_attente').map(conge => (
-                  <tr key={conge._id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '12px' }}>
-                      <strong>{conge.employe?.prenom} {conge.employe?.nom}</strong>
-                    </td>
-                    <td style={{ padding: '12px' }}>{new Date(conge.date_debut).toLocaleDateString('fr-FR')}</td>
-                    <td style={{ padding: '12px' }}>{new Date(conge.date_fin).toLocaleDateString('fr-FR')}</td>
-                    <td style={{ padding: '12px' }}>{conge.type}</td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <button
-                        onClick={() => handleApproveConge(conge._id)}
-                        style={{
-                          padding: '6px 12px',
-                          background: '#28a745',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          marginRight: '5px',
-                          fontSize: '12px'
-                        }}
-                      >
-                        ✅ Approuver
-                      </button>
-                      <button
-                        onClick={() => setSelectedConge(conge._id)}
-                        style={{
-                          padding: '6px 12px',
-                          background: '#dc3545',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                      >
-                        ❌ Refuser
-                      </button>
-                    </td>
+        <>
+          {/* Congés en attente */}
+          <div className="section-card" style={{ marginBottom: 20 }}>
+            <h3>📝 Demandes de Congés en Attente
+              <span style={{ marginLeft: 10, fontWeight: 400, fontSize: 13, color: 'var(--text-muted)' }}>
+                {congesEnAttente.length} demande(s)
+              </span>
+            </h3>
+            <div className="table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Employé</th>
+                    <th>Type</th>
+                    <th>Du</th>
+                    <th>Au</th>
+                    <th>Jours</th>
+                    <th>Motif</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-
-      {/* Stages Tab */}
-      {activeTab === 'stages' && (
-        <div className="table-container">
-          <h2>Demandes de Stage à Valider</h2>
-          {stages.filter(s => s.statut === 'en_attente').length === 0 ? (
-            <p style={{ color: '#999', textAlign: 'center', padding: '20px' }}>Aucune demande en attente</p>
-          ) : (
-            <table style={{ width: '100%' }}>
-              <thead>
-                <tr style={{ background: '#f8f9fa' }}>
-                  <th style={{ padding: '12px', textAlign: 'left' }}>Employé</th>
-                  <th style={{ padding: '12px', textAlign: 'left' }}>Titre</th>
-                  <th style={{ padding: '12px', textAlign: 'left' }}>Entreprise</th>
-                  <th style={{ padding: '12px', textAlign: 'left' }}>Dates</th>
-                  <th style={{ padding: '12px', textAlign: 'center' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stages.filter(s => s.statut === 'en_attente').map(stage => (
-                  <tr key={stage._id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '12px' }}>
-                      <strong>{stage.employe?.prenom} {stage.employe?.nom}</strong>
-                    </td>
-                    <td style={{ padding: '12px' }}>{stage.titre}</td>
-                    <td style={{ padding: '12px' }}>{stage.entreprise}</td>
-                    <td style={{ padding: '12px', fontSize: '13px' }}>
-                      {new Date(stage.date_debut).toLocaleDateString('fr-FR')} → {new Date(stage.date_fin).toLocaleDateString('fr-FR')}
-                    </td>
-                    <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <button
-                        onClick={() => handleApproveStage(stage._id)}
-                        style={{
-                          padding: '6px 12px',
-                          background: '#28a745',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          marginRight: '5px',
-                          fontSize: '12px'
-                        }}
-                      >
-                        ✅ Approuver
-                      </button>
-                      <button
-                        onClick={() => setSelectedStage(stage._id)}
-                        style={{
-                          padding: '6px 12px',
-                          background: '#dc3545',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                      >
-                        ❌ Refuser
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-
-      {/* Modal Refus Congé */}
-      {selectedConge && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '30px',
-            borderRadius: '10px',
-            maxWidth: '400px',
-            width: '90%'
-          }}>
-            <h2>Motif du Refus</h2>
-            <textarea
-              value={motifRefus}
-              onChange={(e) => setMotifRefus(e.target.value)}
-              placeholder="Explicitez les raisons du refus..."
-              rows="4"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '5px',
-                marginBottom: '15px'
-              }}
-            />
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={() => handleRejectConge(selectedConge)}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  background: '#dc3545',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
-              >
-                Refuser
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedConge(null);
-                  setMotifRefus('');
-                }}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  background: '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
-              >
-                Annuler
-              </button>
+                </thead>
+                <tbody>
+                  {congesEnAttente.length > 0 ? congesEnAttente.map(c => (
+                    <tr key={c._id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{
+                            width: 30, height: 30, borderRadius: '50%',
+                            background: 'var(--primary-glow)', color: 'var(--primary)',
+                            fontWeight: 700, fontSize: 11,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>
+                            {c.employe?.prenom?.[0]}{c.employe?.nom?.[0]}
+                          </div>
+                          <strong>{c.employe?.prenom} {c.employe?.nom}</strong>
+                        </div>
+                      </td>
+                      <td><span className="badge badge-neutral">{c.type}</span></td>
+                      <td>{new Date(c.date_debut).toLocaleDateString('fr-FR')}</td>
+                      <td>{new Date(c.date_fin).toLocaleDateString('fr-FR')}</td>
+                      <td><strong>{c.nombre_jours} j</strong></td>
+                      <td style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{c.motif || '—'}</td>
+                      <td>
+                        <div className="action-buttons" style={{ justifyContent: 'center' }}>
+                          <button className="btn-approve" onClick={() => handleApproveConge(c._id)}>
+                            ✅ Approuver
+                          </button>
+                          <button className="btn-delete" onClick={() => { setRejectModal(c._id); setRejectReason(''); }}>
+                            ❌ Refuser
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                        ✅ Aucune demande de congé en attente
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Modal Refus Stage */}
-      {selectedStage && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '30px',
-            borderRadius: '10px',
-            maxWidth: '400px',
-            width: '90%'
-          }}>
-            <h2>Motif du Refus</h2>
-            <textarea
-              value={motifRefus}
-              onChange={(e) => setMotifRefus(e.target.value)}
-              placeholder="Explicitez les raisons du refus..."
-              rows="4"
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '5px',
-                marginBottom: '15px'
-              }}
-            />
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={() => handleRejectStage(selectedStage)}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  background: '#dc3545',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
-              >
-                Refuser
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedStage(null);
-                  setMotifRefus('');
-                }}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  background: '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
-              >
-                Annuler
-              </button>
+          {/* Congés approuvés en cours */}
+          {congesApprouves.length > 0 && (
+            <div className="section-card">
+              <h3>🏖️ Congés en cours (approuvés)
+                <span style={{ marginLeft: 10, fontWeight: 400, fontSize: 13, color: 'var(--text-muted)' }}>
+                  {congesApprouves.length}
+                </span>
+              </h3>
+              <div className="table-wrapper">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Employé</th>
+                      <th>Type</th>
+                      <th>Du</th>
+                      <th>Au</th>
+                      <th>Jours</th>
+                      <th>Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {congesApprouves.map(c => (
+                      <tr key={c._id}>
+                        <td><strong>{c.employe?.prenom} {c.employe?.nom}</strong></td>
+                        <td><span className="badge badge-neutral">{c.type}</span></td>
+                        <td>{new Date(c.date_debut).toLocaleDateString('fr-FR')}</td>
+                        <td>{new Date(c.date_fin).toLocaleDateString('fr-FR')}</td>
+                        <td><strong>{c.nombre_jours} j</strong></td>
+                        <td><span className="badge badge-success">✅ Approuvé</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   );

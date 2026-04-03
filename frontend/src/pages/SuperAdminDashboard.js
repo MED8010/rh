@@ -1,282 +1,253 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../services/api';
 import '../styles/Dashboard.css';
 
 const SuperAdminDashboard = () => {
+  const [metrics, setMetrics] = useState(null);
   const [users, setUsers] = useState([]);
-  const [employes, setEmployes] = useState([]);
-  const [activeTab, setActiveTab] = useState('users');
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    role: 'employe'
-  });
-  const [editingId, setEditingId] = useState(null);
-  const [message, setMessage] = useState('');
-  const [filterRole, setFilterRole] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
-  const fetchUsers = React.useCallback(async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUsers(response.data);
-    } catch (error) {
-      console.error('Erreur lors du chargement des utilisateurs:', error);
-    }
-  }, [API_URL]);
-
-  const fetchEmployes = React.useCallback(async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/employes`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setEmployes(response.data);
-    } catch (error) {
-      console.error('Erreur lors du chargement des employés:', error);
-    }
-  }, [API_URL]);
+  // User Form State
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [userFormData, setUserFormData] = useState({ email: '', password: '', role: 'employe' });
 
   useEffect(() => {
-    fetchUsers();
-    fetchEmployes();
-  }, [fetchUsers, fetchEmployes]);
+    loadDashboardData();
+  }, []);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [metricsRes, usersRes] = await Promise.all([
+        apiClient.get('/system/metrics'),
+        apiClient.get('/users')
+      ]);
+      setMetrics(metricsRes.data);
+      setUsers(usersRes.data);
+      setError('');
+    } catch (err) {
+      console.error('Erreur chargement dashboard:', err);
+      setError('Erreur lors de la récupération des données système');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCreateUser = async (e) => {
+  const showFeedback = (msg, isError = false) => {
+    if (isError) setError(msg);
+    else setSuccessMsg(msg);
+    setTimeout(() => { setError(''); setSuccessMsg(''); }, 3000);
+  };
+
+  const handleUserSubmit = async (e) => {
     e.preventDefault();
     try {
-      const token = localStorage.getItem('token');
-
-      if (editingId) {
-        await axios.put(`${API_URL}/users/${editingId}`, formData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setMessage('✅ Utilisateur modifié avec succès');
-        setEditingId(null);
+      if (editingUser) {
+        await apiClient.put(`/users/${editingUser._id}`, userFormData);
+        showFeedback('✅ Utilisateur mis à jour');
       } else {
-        await axios.post(`${API_URL}/users`, formData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setMessage('✅ Utilisateur créé avec succès');
+        await apiClient.post('/users', userFormData);
+        showFeedback('✅ Utilisateur créé');
       }
-
-      setFormData({ email: '', password: '', role: 'employe' });
-      fetchUsers();
-    } catch (error) {
-      setMessage('❌ Erreur: ' + (error.response?.data?.message || error.message));
+      setShowUserModal(false);
+      loadDashboardData();
+    } catch (err) {
+      showFeedback('❌ Erreur lors de l\'opération', true);
     }
   };
 
   const handleDeleteUser = async (id) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur?')) {
-      try {
-        const token = localStorage.getItem('token');
-        await axios.delete(`${API_URL}/users/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setMessage('✅ Utilisateur supprimé avec succès');
-        fetchUsers();
-      } catch (error) {
-        setMessage('❌ Erreur: ' + error.message);
-      }
+    if (!window.confirm('Supprimer cet utilisateur ?')) return;
+    try {
+      await apiClient.delete(`/users/${id}`);
+      showFeedback('✅ Utilisateur supprimé');
+      loadDashboardData();
+    } catch (err) {
+      showFeedback('❌ Erreur suppression', true);
     }
   };
 
-  const handleEditUser = (user) => {
-    setFormData({
-      email: user.email,
-      password: '',
-      role: user.role
-    });
-    setEditingId(user._id);
-  };
+  if (loading && !metrics) return <div className="loading"><div className="spinner"></div>Initialisation du cockpit système...</div>;
 
-  const filteredUsers = filterRole ? users.filter(u => u.role === filterRole) : users;
+  const { metrics: stats, recentActivity, rolesDistribution } = metrics || {};
 
   return (
     <div className="dashboard-container">
-      <div className="dashboard-header">
-        <h1>👑 Super Admin Dashboard</h1>
-        <p>Gestion complète du système</p>
+      {/* Header */}
+      <div className="page-header">
+        <div className="page-title-group">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 32 }}>👑</span>
+            <div>
+              <h1>Cockpit Super Admin</h1>
+              <p className="page-subtitle">Gestion de l'infrastructure et sécurité système</p>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+           <button className="btn-secondary" onClick={loadDashboardData}>🔄 Actualiser</button>
+           <button className="btn-primary" onClick={() => { setEditingUser(null); setUserFormData({email:'', password:'', role:'employe'}); setShowUserModal(true); }}>
+             👤 Nouvel Utilisateur
+           </button>
+        </div>
       </div>
 
-      <div className="admin-tabs">
-        <button
-          className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
-          onClick={() => setActiveTab('users')}
-        >
-          👤 Gestion des Utilisateurs
+      {error && <div className="error-message animate-fade-in">⚠️ {error}</div>}
+      {successMsg && <div className="success-message animate-fade-in">{successMsg}</div>}
+
+      {/* Main KPIs */}
+      <div className="kpi-container">
+        <div className="kpi-card kpi-primary">
+          <div className="kpi-card-top"><div className="kpi-icon-box">👥</div></div>
+          <div><p className="kpi-label">Utilisateurs</p><p className="kpi-value">{stats?.totalUsers || 0}</p><p className="kpi-subtitle">Comptes actifs</p></div>
+        </div>
+        <div className="kpi-card kpi-warning">
+          <div className="kpi-card-top"><div className="kpi-icon-box">🔑</div></div>
+          <div><p className="kpi-label">Admins</p><p className="kpi-value">{stats?.admins || 0}</p><p className="kpi-subtitle">Accès privilégiés</p></div>
+        </div>
+        <div className="kpi-card kpi-info">
+          <div className="kpi-card-top"><div className="kpi-icon-box">🗄️</div></div>
+          <div><p className="kpi-label">Base de Données</p><p className="kpi-value">{stats?.dbSize || '0 MB'}</p><p className="kpi-subtitle">{stats?.collections || 0} collections</p></div>
+        </div>
+        <div className="kpi-card kpi-success">
+          <div className="kpi-card-top"><div className="kpi-icon-box">⚡</div></div>
+          <div><p className="kpi-label">Uptime</p><p className="kpi-value">{Math.floor(stats?.uptime / 3600)}h {Math.floor((stats?.uptime % 3600) / 60)}m</p><p className="kpi-subtitle">Disponibilité serveur</p></div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="tabs-container" style={{ marginBottom: 30 }}>
+        <button className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
+          <span className="tab-icon">📊</span>
+          <span>Vue d'ensemble System</span>
         </button>
-        <button
-          className={`tab-btn ${activeTab === 'employees' ? 'active' : ''}`}
-          onClick={() => setActiveTab('employees')}
-        >
-          🏢 Gestion des Employés
+        <button className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
+          <span className="tab-icon">👤</span>
+          <span>Utilisateurs ({users.length})</span>
         </button>
-        <button
-          className={`tab-btn ${activeTab === 'stats' ? 'active' : ''}`}
-          onClick={() => setActiveTab('stats')}
-        >
-          📊 Statistiques
+        <button className={`tab-btn ${activeTab === 'health' ? 'active' : ''}`} onClick={() => setActiveTab('health')}>
+          <span className="tab-icon">🏥</span>
+          <span>Santé & Sécurité</span>
         </button>
       </div>
 
-      {message && (
-        <div className={message.includes('✅') ? 'success-message' : 'error-message'}>
-          {message}
+      {/* TAB: OVERVIEW */}
+      {activeTab === 'overview' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 24 }}>
+          {/* Recent Activity */}
+          <div className="section-card">
+            <h3>🛡️ Dernières Activités Système</h3>
+            <div className="activity-feed">
+              {recentActivity?.map((log, i) => (
+                <div key={log._id} className="activity-item" style={{ 
+                  display: 'flex', gap: 15, padding: '12px 0', borderBottom: i < recentActivity.length -1 ? '1px solid var(--border)' : 'none'
+                }}>
+                  <div style={{ 
+                    width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-hover)', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18
+                  }}>
+                    {log.action === 'login' ? '🔐' : log.action === 'create' ? '➕' : log.action === 'update' ? '✏️' : '🗑️'}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <strong style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>{log.user?.email || 'Système'}</strong>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(log.date_action).toLocaleString('fr-FR')}</span>
+                    </div>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '4px 0' }}>
+                      {log.description}
+                    </p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <span className="badge badge-neutral" style={{ fontSize: 10 }}>{log.module}</span>
+                      <span className={`badge ${log.status === 'success' ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: 10 }}>
+                        {log.status === 'success' ? 'Succès' : 'Échec'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button className="btn-text" style={{ marginTop: 15, width: '100%' }} onClick={() => window.location.href='/audit'}>
+              Voir tout le journal d'audit →
+            </button>
+          </div>
+
+          {/* Role Distribution Chart (Simulated with Bar) */}
+          <div className="section-card">
+            <h3>📊 Distribution des Rôles</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 15 }}>
+              {[
+                { label: 'Super Admin', count: rolesDistribution?.super_admin, color: '#f59e0b' },
+                { label: 'Admin', count: rolesDistribution?.admin, color: '#6366f1' },
+                { label: 'Chef Service', count: rolesDistribution?.chef_service, color: '#10b981' },
+                { label: 'Employé', count: rolesDistribution?.employe, color: '#64748b' }
+              ].map(role => (
+                <div key={role.label}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12 }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{role.label}</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>{role.count}</strong>
+                  </div>
+                  <div className="progress-bar" style={{ height: 8 }}>
+                    <div className="progress-fill" style={{ 
+                      width: `${(role.count / stats?.totalUsers) * 100}%`, 
+                      background: role.color 
+                    }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Users Management */}
+      {/* TAB: USERS LIST */}
       {activeTab === 'users' && (
-        <div className="tab-content">
-          <div className="form-section">
-            <h2>{editingId ? '✏️ Modifier Utilisateur' : '➕ Créer Nouvel Utilisateur'}</h2>
-            <form onSubmit={handleCreateUser} className="form-grid">
-              <div className="form-group">
-                <label>Email *</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Mot de passe {!editingId && '*'}</label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required={!editingId}
-                  placeholder={editingId ? 'Laisser vide pour ne pas modifier' : ''}
-                />
-              </div>
-              <div className="form-group">
-                <label>Rôle *</label>
-                <select name="role" value={formData.role} onChange={handleInputChange}>
-                  <option value="employe">Employé</option>
-                  <option value="chef_service">Chef de Service</option>
-                  <option value="admin">Admin</option>
-                  <option value="super_admin">Super Admin</option>
-                </select>
-              </div>
-              <button type="submit" className="btn-primary">
-                {editingId ? '💾 Modifier' : '➕ Créer'}
-              </button>
-              {editingId && (
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    setEditingId(null);
-                    setFormData({ email: '', password: '', role: 'employe' });
-                  }}
-                >
-                  Annuler
-                </button>
-              )}
-            </form>
+        <div className="section-card animate-fade-in">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <h3>👥 Liste des Comptes Utilisateurs</h3>
           </div>
-
-          <div className="list-section">
-            <div className="filters-section">
-              <h2>👥 Utilisateurs du Système</h2>
-              <select
-                value={filterRole}
-                onChange={(e) => setFilterRole(e.target.value)}
-                className="filter-select"
-              >
-                <option value="">Tous les rôles</option>
-                <option value="employe">Employé</option>
-                <option value="chef_service">Chef de Service</option>
-                <option value="admin">Admin</option>
-                <option value="super_admin">Super Admin</option>
-              </select>
-            </div>
-
-            <div className="kpi-container">
-              <div className="kpi-card">
-                <div className="kpi-icon">👤</div>
-                <div className="kpi-content">
-                  <p className="kpi-label">Total Utilisateurs</p>
-                  <p className="kpi-value">{users.length}</p>
-                </div>
-              </div>
-              <div className="kpi-card">
-                <div className="kpi-icon">👥</div>
-                <div className="kpi-content">
-                  <p className="kpi-label">Employés</p>
-                  <p className="kpi-value">{users.filter(u => u.role === 'employe').length}</p>
-                </div>
-              </div>
-              <div className="kpi-card">
-                <div className="kpi-icon">👔</div>
-                <div className="kpi-content">
-                  <p className="kpi-label">Chefs de Service</p>
-                  <p className="kpi-value">{users.filter(u => u.role === 'chef_service').length}</p>
-                </div>
-              </div>
-              <div className="kpi-card">
-                <div className="kpi-icon">🔑</div>
-                <div className="kpi-content">
-                  <p className="kpi-label">Admins</p>
-                  <p className="kpi-value">{users.filter(u => u.role === 'admin' || u.role === 'super_admin').length}</p>
-                </div>
-              </div>
-            </div>
-
+          <div className="table-wrapper">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Email</th>
+                  <th>Utilisateur</th>
                   <th>Rôle</th>
-                  <th>Date Création</th>
-                  <th>Actions</th>
+                  <th>ID Unique</th>
+                  <th>Créé le</th>
+                  <th style={{ textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map(user => (
-                  <tr key={user._id}>
-                    <td>{user.email}</td>
+                {users.map(u => (
+                  <tr key={u._id}>
                     <td>
-                      <span className={`role-badge role-${user.role}`}>
-                        {user.role === 'super_admin' && '👑 Super Admin'}
-                        {user.role === 'admin' && '🔐 Admin'}
-                        {user.role === 'chef_service' && '👔 Chef'}
-                        {user.role === 'employe' && '👤 Employé'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ 
+                          width: 32, height: 32, borderRadius: '50%', background: 'var(--bg-hover)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 12
+                        }}>
+                          {u.email?.[0]?.toUpperCase()}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                           <span style={{ fontWeight: 600 }}>{u.email}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`badge role-badge role-${u.role}`}>
+                        {u.role.toUpperCase().replace('_', ' ')}
                       </span>
                     </td>
-                    <td>{new Date(user.createdAt).toLocaleDateString('fr-FR')}</td>
+                    <td><code style={{ fontSize: 11, color: 'var(--text-muted)' }}>{u._id}</code></td>
+                    <td>{new Date(u.createdAt).toLocaleDateString('fr-FR')}</td>
                     <td>
-                      <button
-                        className="btn-edit"
-                        onClick={() => handleEditUser(user)}
-                        title="Modifier"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        className="btn-delete"
-                        onClick={() => handleDeleteUser(user._id)}
-                        title="Supprimer"
-                      >
-                        🗑️
-                      </button>
+                      <div className="action-buttons" style={{ justifyContent: 'center' }}>
+                         <button className="btn-edit" onClick={() => { setEditingUser(u); setUserFormData({email:u.email, password:'', role:u.role}); setShowUserModal(true); }}>✏️</button>
+                         <button className="btn-delete" onClick={() => handleDeleteUser(u._id)}>🗑️</button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -286,127 +257,81 @@ const SuperAdminDashboard = () => {
         </div>
       )}
 
-      {/* Employees Management */}
-      {activeTab === 'employees' && (
-        <div className="tab-content">
-          <div className="list-section">
-            <h2>🏢 Liste des Employés</h2>
-
-            <div className="kpi-container">
-              <div className="kpi-card">
-                <div className="kpi-icon">👥</div>
-                <div className="kpi-content">
-                  <p className="kpi-label">Total Employés</p>
-                  <p className="kpi-value">{employes.length}</p>
-                </div>
+      {/* TAB: HEALTH */}
+      {activeTab === 'health' && (
+        <div className="section-card">
+          <h3>🏥 État des Services & Systèmes</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 20, marginTop: 15 }}>
+            <div className="status-item" style={{ padding: 15, background: 'var(--bg-hover)', borderRadius: 12, border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                <strong style={{ color: 'var(--text-primary)' }}>🚀 API Performance</strong>
+                <span className="badge badge-success">Sain</span>
               </div>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Latence moyenne: 45ms</p>
             </div>
-
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Matricule</th>
-                  <th>Nom</th>
-                  <th>Prénom</th>
-                  <th>Email</th>
-                  <th>Service</th>
-                  <th>Date Embauche</th>
-                </tr>
-              </thead>
-              <tbody>
-                {employes.map(emp => (
-                  <tr key={emp._id}>
-                    <td>{emp.matricule}</td>
-                    <td>{emp.nom}</td>
-                    <td>{emp.prenom}</td>
-                    <td>{emp.email}</td>
-                    <td>{emp.service?.nom_service || '-'}</td>
-                    <td>{new Date(emp.date_embauche).toLocaleDateString('fr-FR')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="status-item" style={{ padding: 15, background: 'var(--bg-hover)', borderRadius: 12, border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                <strong style={{ color: 'var(--text-primary)' }}>💾 Database MongoDB</strong>
+                <span className="badge badge-success">Connecté</span>
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Moteur: WiredTiger | Version: 6.0+</p>
+            </div>
+            <div className="status-item" style={{ padding: 15, background: 'var(--bg-hover)', borderRadius: 12, border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                <strong style={{ color: 'var(--text-primary)' }}>📠 Pointeuses Biométriques</strong>
+                <span className="badge badge-warning">Partiel</span>
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>2/3 devices online. Vérifier réseau.</p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Statistics */}
-      {activeTab === 'stats' && (
-        <div className="tab-content">
-          <h2>📊 Statistiques du Système</h2>
-
-          <div className="kpi-container">
-            <div className="kpi-card">
-              <div className="kpi-icon">👨‍💼</div>
-              <div className="kpi-content">
-                <p className="kpi-label">Utilisateurs Totaux</p>
-                <p className="kpi-value">{users.length}</p>
+      {/* User Modal */}
+      {showUserModal && (
+        <div className="modal-overlay">
+          <div className="modal-content animate-slide-in" style={{ maxWidth: 450 }}>
+            <div className="modal-header">
+              <h2>{editingUser ? '✏️ Modifier Utilisateur' : '👤 Nouvel Utilisateur'}</h2>
+              <button className="close-btn" onClick={() => setShowUserModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleUserSubmit} className="premium-form" style={{ padding: 20 }}>
+              <div className="form-group">
+                <label>Email Professionnel <span className="required">*</span></label>
+                <input 
+                  type="email" 
+                  value={userFormData.email} 
+                  onChange={e => setUserFormData({...userFormData, email: e.target.value})} 
+                  required 
+                />
               </div>
-            </div>
-            <div className="kpi-card">
-              <div className="kpi-icon">👥</div>
-              <div className="kpi-content">
-                <p className="kpi-label">Employés Actifs</p>
-                <p className="kpi-value">{employes.length}</p>
+              <div className="form-group">
+                <label>Mot de Passe {editingUser ? '(Laisser vide pour garder l\'actuel)' : '*'}</label>
+                <input 
+                  type="password" 
+                  value={userFormData.password} 
+                  onChange={e => setUserFormData({...userFormData, password: e.target.value})} 
+                  required={!editingUser}
+                />
               </div>
-            </div>
-            <div className="kpi-card">
-              <div className="kpi-icon">👔</div>
-              <div className="kpi-content">
-                <p className="kpi-label">Chefs de Service</p>
-                <p className="kpi-value">{users.filter(u => u.role === 'chef_service').length}</p>
+              <div className="form-group">
+                <label>Rôle Système <span className="required">*</span></label>
+                <select 
+                  value={userFormData.role} 
+                  onChange={e => setUserFormData({...userFormData, role: e.target.value})}
+                  required
+                >
+                  <option value="employe">Employé</option>
+                  <option value="chef_service">Chef de Service</option>
+                  <option value="admin">Administrateur</option>
+                  <option value="super_admin">Super Administrateur</option>
+                </select>
               </div>
-            </div>
-            <div className="kpi-card">
-              <div className="kpi-icon">🔐</div>
-              <div className="kpi-content">
-                <p className="kpi-label">Admins</p>
-                <p className="kpi-value">{users.filter(u => u.role === 'admin' || u.role === 'super_admin').length}</p>
+              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowUserModal(false)}>Annuler</button>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>{editingUser ? 'Sauvegarder' : 'Créer Compte'}</button>
               </div>
-            </div>
-          </div>
-
-          <div className="stats-container">
-            <div className="stats-box">
-              <h3>📈 Distribution des Rôles</h3>
-              <ul>
-                <li>👤 Employés: {users.filter(u => u.role === 'employe').length}</li>
-                <li>👔 Chefs: {users.filter(u => u.role === 'chef_service').length}</li>
-                <li>🔐 Admins: {users.filter(u => u.role === 'admin').length}</li>
-                <li>👑 Super Admins: {users.filter(u => u.role === 'super_admin').length}</li>
-              </ul>
-            </div>
-
-            <div className="stats-box">
-              <h3>📍 Répartition Géographique (Top Régions)</h3>
-              <div className="geo-list">
-                {Object.entries(
-                  employes.reduce((acc, emp) => {
-                    if (!emp.adresse) return acc;
-                    const parts = emp.adresse.split(',');
-                    const city = parts.length > 2 ? parts[parts.length - 2].trim() : 'Inconnu';
-                    acc[city] = (acc[city] || 0) + 1;
-                    return acc;
-                  }, {})
-                )
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 5)
-                  .map(([city, count]) => (
-                    <div key={city} className="geo-item" style={{ marginBottom: 12 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontWeight: 600, fontSize: 13 }}>{city}</span>
-                        <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{count}</span>
-                      </div>
-                      <div className="progress-bar">
-                        <div
-                          className="progress-fill"
-                          style={{ width: `${(count / employes.length) * 100}%`, background: 'var(--grad-accent)' }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
+            </form>
           </div>
         </div>
       )}

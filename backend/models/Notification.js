@@ -8,8 +8,19 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['conge_demande', 'conge_approuve', 'conge_refuse', 'stage_demande', 'stage_approuve', 'stage_refuse', 'salaire_disponible', 'document_demande', 'document_traite', 'document_rejete', 'autre'],
+    enum: [
+      'conge_demande', 'conge_approuve', 'conge_refuse', 'conge_rappel_fin',
+      'stage_demande', 'stage_approuve', 'stage_refuse',
+      'salaire_disponible', 
+      'document_demande', 'document_traite', 'document_rejete', 'document_rappel',
+      'pointage_rappel', 'discipline_alerte', 'autre'
+    ],
     required: true
+  },
+  category: {
+    type: String,
+    enum: ['RH', 'Paie', 'Pointage', 'Discipline', 'Systeme'],
+    default: 'Systeme'
   },
   titre: {
     type: String,

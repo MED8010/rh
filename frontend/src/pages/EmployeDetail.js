@@ -153,7 +153,7 @@ const EmployeDetail = () => {
                                                 {Array.from({ length: daysInMonth }).map((_, day) => {
                                                     const dateStr = new Date(new Date().getFullYear(), monthIdx, day + 1).toISOString().split('T')[0];
                                                     const pointage = pointages.find(p => p.date.split('T')[0] === dateStr);
-                                                    let color = 'rgba(0,0,0,0.05)';
+                                                    let color = 'var(--bg-hover)';
                                                     let title = `${day + 1}/${monthIdx + 1}`;
 
                                                     if (pointage) {

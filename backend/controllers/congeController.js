@@ -137,13 +137,13 @@ const approveConge = async (req, res) => {
       const dateDebutFr = new Date(conge.date_debut).toLocaleDateString('fr-FR');
       const dateFinFr = new Date(conge.date_fin).toLocaleDateString('fr-FR');
 
-      await createNotification(
-        employeUser._id,
-        'conge_approuve',
-        '✅ Demande de congé approuvée',
-        `Votre demande de congé du ${dateDebutFr} au ${dateFinFr} (${conge.nombre_jours} jour(s)) a été approuvée.`,
-        conge._id
-      );
+      await createAndSendNotification(employeUser._id, {
+        type: 'conge_approuve',
+        category: 'RH',
+        titre: '✅ Demande de congé approuvée',
+        message: `Votre demande de congé du ${dateDebutFr} au ${dateFinFr} (${conge.nombre_jours} jour(s)) a été approuvée.`,
+        reference_id: conge._id
+      });
 
       // Envoyer email si l'employé a un email
       if (employeUser.email) {

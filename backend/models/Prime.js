@@ -13,22 +13,37 @@ const primeSchema = new mongoose.Schema({
   },
   date: {
     type: Date,
+    required: true,
+    default: Date.now
+  },
+  type_prime: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PrimeType',
     required: true
   },
-  type: {
-    type: String,
-    enum: ['performance', 'assiduité', 'productivité', 'autre'],
-    default: 'autre'
-  },
   description: String,
-  mois: Number,
-  annee: Number,
+  mois: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 12
+  },
+  annee: {
+    type: Number,
+    required: true,
+    min: 2000
+  },
+  statut: {
+    type: String,
+    enum: ['payé', 'en_attente', 'annulé'],
+    default: 'en_attente'
+  },
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
 
-primeSchema.index({ employe: 1, date: 1 });
+primeSchema.index({ employe: 1, mois: 1, annee: 1 });
 
 module.exports = mongoose.model('Prime', primeSchema);

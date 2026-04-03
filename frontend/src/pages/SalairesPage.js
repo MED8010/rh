@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../services/api';
+import pdfService from '../services/pdfService';
 import '../styles/Dashboard.css';
 
 const MOIS_LABELS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -250,6 +251,13 @@ const SalairesPage = () => {
           </select>
           <button className="btn-primary" onClick={handleCalculateAll} disabled={calculating}>
             {calculating ? '⏳ Calcul en cours...' : '🧮 Calculer Tous'}
+          </button>
+          <button 
+            className="btn-view" 
+            onClick={() => pdfService.exportSalairesReport(salaires, MOIS_LABELS[mois - 1], annee)}
+            style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 8 }}
+          >
+            📄 Export PDF
           </button>
           {calcules > 0 && (
             <button className="btn-success" onClick={handleValidateAll} disabled={calculating} style={{ padding: '10px 18px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--success)', color: 'white', fontWeight: 600, cursor: 'pointer' }}>

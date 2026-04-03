@@ -5,16 +5,12 @@ const multer = require('multer');
 const path = require('path');
 const Notification = require('../models/Notification');
 const fs = require('fs');
+const { sendDocumentNotificationEmail } = require('../services/emailService');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-const createNotification = async (userId, type, titre, message, referenceId) => {
-  try {
-    await Notification.create({ user: userId, type, titre, message, reference_id: referenceId });
-  } catch (err) {
-    console.error('❌ Erreur création notification:', err.message);
-  }
-};
+const { createAndSendNotification } = require('../services/notificationService');
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
 const getAdminUsers = async () => {
   return User.find({ role: { $in: ['admin', 'super_admin'] } });
 };
@@ -180,6 +176,14 @@ const updateRequest = async (req, res) => {
               : `Votre demande de document (${typeLabel}) a été rejetée. Commentaire: ${commentaire_admin || 'Pas de motif spécifié'}.`,
             request._id
           );
+
+          // ── Email Notification ───────────────────────────────────────────
+          const employe = await Employe.findById(request.employe);
+          if (employe && (employe.email || employeUser.email)) {
+            const emailDest = employe.email || employeUser.email;
+            const employeNom = `${employe.prenom} ${employe.nom}`;
+            await sendDocumentNotificationEmail(emailDest, employeNom, request.statut, request);
+          }
         }
       } catch (notifErr) {
         console.error('Erreur notification employe:', notifErr);

@@ -1,4 +1,22 @@
 const Notification = require('../models/Notification');
+const PushSubscription = require('../models/PushSubscription');
+const webPush = require('web-push');
+
+// Configuration Web Push (Générez vos clés VAPID une seule fois!)
+// (Note: En production, mettez-les dans .env)
+const vapidDetails = {
+  publicKey: process.env.VAPID_PUBLIC_KEY || 'BFZshl9-oV5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T5T',
+  privateKey: process.env.VAPID_PRIVATE_KEY || 'VAPID_PRIVATE_KEY_MISSING',
+  subject: 'mailto:admin@rh-med.com'
+};
+
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webPush.setVapidDetails(
+    vapidDetails.subject,
+    vapidDetails.publicKey,
+    vapidDetails.privateKey
+  );
+}
 
 // Obtenir toutes les notifications de l'utilisateur
 const getMyNotifications = async (req, res) => {
@@ -90,10 +108,58 @@ const deleteAllReadNotifications = async (req, res) => {
   }
 };
 
+// S'abonner aux notifications push
+const subscribeToPush = async (req, res) => {
+  try {
+    const { subscription, device_info } = req.body;
+    
+    // Supprimer l'ancien abonnement pour cet utilisateur/terminal s'il existe
+    await PushSubscription.findOneAndDelete({ 
+      user: req.user.id, 
+      'subscription.endpoint': subscription.endpoint 
+    });
+
+    const newSub = new PushSubscription({
+      user: req.user.id,
+      subscription,
+      device_info
+    });
+
+    await newSub.save();
+    res.status(201).json({ message: 'Abonnement push enregistré' });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur d’abonnement', error: error.message });
+  }
+};
+
+// Fonction utilitaire pour envoyer un push à un utilisateur
+const sendPushNotification = async (userId, payload) => {
+  try {
+    const subscriptions = await PushSubscription.find({ user: userId });
+    
+    const pushPromises = subscriptions.map(sub => 
+      webPush.sendNotification(sub.subscription, JSON.stringify(payload))
+        .catch(err => {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            // L'abonnement est expiré ou n'est plus valide -> le supprimer
+            return PushSubscription.findByIdAndDelete(sub._id);
+          }
+          console.error('[PUSH ERROR]', err);
+        })
+    );
+
+    await Promise.all(pushPromises);
+  } catch (error) {
+    console.error('[PUSH JOB ERROR]', error);
+  }
+};
+
 module.exports = {
   getMyNotifications,
   markAsRead,
   markAllAsRead,
   deleteNotification,
-  deleteAllReadNotifications
+  deleteAllReadNotifications,
+  subscribeToPush,
+  sendPushNotification
 };

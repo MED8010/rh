@@ -6,35 +6,36 @@ import apiClient from '../services/api';
 const NAV_CONFIG = {
   super_admin: [
     {
-      section: 'Tableaux de Bord',
+      section: 'Pilotage Système',
       items: [
-        { path: '/super-admin', icon: '🔧', label: 'Gestion Système' },
-        { path: '/dashboard', icon: '📊', label: 'Dashboard Admin' },
-        { path: '/biometric-devices', icon: '📠', label: 'Pointeuses' },
-        { path: '/configuration', icon: '⚙️', label: 'Configuration' },
+        { path: '/super-admin', icon: '👑', label: 'Cockpit Système' },
+        { path: '/audit', icon: '🛡️', label: 'Sécurité & Audits' },
+        { path: '/biometric-devices', icon: '📠', label: 'Matériel Bio' },
+        { path: '/configuration', icon: '⚙️', label: 'Réglages Globaux' },
       ]
     },
     {
-      section: 'Analytiques',
+      section: 'Vues Opérationnelles',
       items: [
+        { path: '/dashboard', icon: '📊', label: 'Dashboard RH' },
         { path: '/time-discipline', icon: '⏱️', label: 'Temps & Discipline' },
         { path: '/salary-analytics', icon: '💰', label: 'Analyse Salaires' },
       ]
     },
     {
-      section: 'Gestion RH',
+      section: 'Ressources Humaines',
       items: [
         { path: '/employes', icon: '👥', label: 'Employés' },
         { path: '/pointages', icon: '✅', label: 'Pointages' },
         { path: '/conges', icon: '🏖️', label: 'Congés' },
         { path: '/salaires', icon: '💳', label: 'Salaires' },
+        { path: '/primes', icon: '💰', label: 'Primes' },
         { path: '/admin-documents', icon: '📄', label: 'Documents' },
       ]
     },
     {
-      section: 'Sécurité',
+      section: 'Communication',
       items: [
-        { path: '/audit', icon: '📋', label: 'Journal Audit' },
         { path: '/notifications', icon: '🔔', label: 'Notifications', hasNotif: true },
       ]
     },
@@ -44,8 +45,7 @@ const NAV_CONFIG = {
       section: 'Tableaux de Bord',
       items: [
         { path: '/dashboard', icon: '📊', label: 'Dashboard' },
-        { path: '/biometric-devices', icon: '📠', label: 'Pointeuses' },
-        { path: '/configuration', icon: '⚙️', label: 'Configuration' },
+        { path: '/biometric-devices', icon: '📠', label: 'Pointeuses' }
       ]
     },
     {
@@ -62,6 +62,7 @@ const NAV_CONFIG = {
         { path: '/pointages', icon: '✅', label: 'Pointages' },
         { path: '/conges', icon: '🏖️', label: 'Congés' },
         { path: '/salaires', icon: '💳', label: 'Salaires' },
+        { path: '/primes', icon: '💰', label: 'Primes' },
         { path: '/admin-documents', icon: '📄', label: 'Documents' },
       ]
     },
@@ -88,13 +89,15 @@ const NAV_CONFIG = {
     {
       section: 'Tableaux de Bord',
       items: [
-        { path: '/employee-dashboard', icon: '📊', label: 'Mon Dashboard' }
+        { path: '/chef-dashboard', icon: '📋', label: 'Mon Équipe' },
+        { path: '/employee-dashboard', icon: '📊', label: 'Mon Dashboard' },
+        { path: '/primes', icon: '💰', label: 'Attribuer Prime' }
       ]
     },
     {
       section: 'Personnel',
       items: [
-        { path: '/mes-conges-chef', icon: '🏖️', label: 'Mes Congés' },
+        { path: '/mes-conges', icon: '🏖️', label: 'Mes Congés' },
         { path: '/mes-documents', icon: '📄', label: 'Mes Documents' },
         { path: '/notifications', icon: '🔔', label: 'Notifications', hasNotif: true },
       ]

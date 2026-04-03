@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../services/api';
+import pdfService from '../services/pdfService';
 import { Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -28,6 +29,7 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [timeStats, setTimeStats] = useState(null);
   const [salaireStats, setSalaireStats] = useState(null);
+  const [topDisciplined, setTopDisciplined] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -69,14 +71,16 @@ const AdminDashboard = () => {
 
       const query = `?${params.toString()}`;
 
-      const [employeStats, timeS, analyticsS] = await Promise.all([
+      const [employeStats, timeS, analyticsS, topD] = await Promise.all([
         apiClient.get(`/employes/stats${query}`),
         apiClient.get(`/pointages/stats/time-stats${query}`),
         apiClient.get(`/salaires/stats/analytics${query}`),
+        apiClient.get(`/pointages/stats/top-disciplined${query}`),
       ]);
       setStats(employeStats.data);
       setTimeStats(timeS.data);
       setSalaireStats(analyticsS.data);
+      setTopDisciplined(topD.data);
     } catch (error) {
       console.error('Erreur lors du chargement:', error);
     } finally {
@@ -151,17 +155,19 @@ const AdminDashboard = () => {
         labels: {
           padding: 16,
           font: { size: 12, family: 'Inter' },
-          color: '#64748b',
+          color: '#cbd5e1',
           usePointStyle: true,
           pointStyleWidth: 10,
         }
       },
       tooltip: {
-        backgroundColor: '#1e1b4b',
+        backgroundColor: '#1a1830',
         padding: 12,
         titleColor: '#fff',
-        bodyColor: '#c4c9f7',
+        bodyColor: '#cbd5e1',
         cornerRadius: 8,
+        borderColor: '#2d2b4e',
+        borderWidth: 1
       }
     }
   };
@@ -219,9 +225,33 @@ const AdminDashboard = () => {
             Bienvenue, <strong>{user?.email}</strong> — Vue d'ensemble des activités RH
           </p>
         </div>
-        <div className="time-badge">
-          <span className="date-display">{formatDate(currentTime)}</span>
-          <span className="time-display">🕐 {formatTime(currentTime)}</span>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div className="time-badge">
+            <span className="date-display">{formatDate(currentTime)}</span>
+            <span className="time-display">🕐 {formatTime(currentTime)}</span>
+          </div>
+          <button 
+            className="btn-view" 
+            onClick={() => {
+              const MOIS_LABELS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+              pdfService.generateMonthlyBilan({
+                moisLabel: filters.mois ? MOIS_LABELS[filters.mois - 1] : 'Période',
+                annee: filters.annee || new Date().getFullYear(),
+                masseBrute: salaireStats?.masseSalariale || 0,
+                totalDeductions: salaireStats?.deductions || 0,
+                masseNette: (salaireStats?.masseSalariale || 0) - (salaireStats?.deductions || 0),
+                nombreFiches: salaireStats?.totalEmployes || 0,
+                totalHSupp: salaireStats?.heuresSup?.total || 0,
+                totalRetards: timeStats?.retardCount || 0,
+                totalAbsences: timeStats?.absenceCount || 0,
+                congesApprouves: stats?.totalConges || 0,
+                nouveauxEmployes: stats?.newEmployes || 0
+              });
+            }}
+            style={{ padding: '0 20px', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}
+          >
+            📊 Bilan Mensuel
+          </button>
         </div>
       </div>
 
@@ -377,6 +407,83 @@ const AdminDashboard = () => {
               )}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Top Disciplined Employees */}
+      <div className="section-card" style={{ marginTop: '24px' }}>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '20px' }}>
+          🏆 Top 10 Collaborateurs Disciplinés
+          <span style={{ fontSize: '12px', fontWeight: '400', background: 'var(--primary-glow)', color: 'var(--primary)', padding: '4px 10px', borderRadius: '20px' }}>
+            Trié par assiduité & ponctualité
+          </span>
+        </h2>
+        <div className="table-wrapper">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th style={{ width: '60px', textAlign: 'center' }}>Rang</th>
+                <th>Employé</th>
+                <th>Matricule</th>
+                <th style={{ textAlign: 'center' }}>Absences</th>
+                <th style={{ textAlign: 'center' }}>Retards (min)</th>
+                <th>Performance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(topDisciplined || []).map((emp, index) => (
+                <tr key={emp._id}>
+                  <td style={{ textAlign: 'center' }}>
+                    <span style={{ 
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      width: '24px', height: '24px', borderRadius: '50%',
+                      background: index < 3 ? 'var(--grad-primary)' : 'var(--bg-hover)',
+                      color: index < 3 ? 'white' : 'var(--text-secondary)',
+                      fontSize: '12px', fontWeight: '800'
+                    }}>
+                      {index + 1}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div className="avatar" style={{ width: 32, height: 32, fontSize: 12 }}>
+                        {emp.prenom ? emp.prenom[0] : ''}{emp.nom ? emp.nom[0] : ''}
+                      </div>
+                      <span style={{ fontWeight: 600 }}>{emp.prenom} {emp.nom}</span>
+                    </div>
+                  </td>
+                  <td><code style={{ background: 'var(--bg-hover)', padding: '2px 6px', borderRadius: 4 }}>{emp.matricule}</code></td>
+                  <td style={{ textAlign: 'center' }}>
+                    <span className={`badge ${emp.totalAbsences === 0 ? 'badge-success' : 'badge-warning'}`}>
+                      {emp.totalAbsences}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                     <span style={{ fontWeight: 700, color: emp.totalRetards === 0 ? 'var(--success)' : 'var(--warning)' }}>
+                      {emp.totalRetards} m
+                    </span>
+                  </td>
+                  <td>
+                    <div className="discipline-indicator" style={{ 
+                      width: '100%', height: '8px', background: 'var(--bg-hover)', borderRadius: '4px', overflow: 'hidden' 
+                    }}>
+                      <div style={{ 
+                        width: `${Math.max(10, 100 - (emp.totalAbsences * 20) - (emp.totalRetards / 5))}%`, 
+                        height: '100%', background: 'var(--grad-success)' 
+                      }}></div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {(!topDisciplined || topDisciplined.length === 0) && (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                    Chargement ou aucune donnée disponible pour cette période.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

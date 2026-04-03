@@ -1,6 +1,7 @@
 const Pointage = require('../models/Pointage');
 const Employe = require('../models/Employe');
 const Conge = require('../models/Conge');
+const mongoose = require('mongoose');
 
 // Créer ou mettre à jour un pointage
 const createPointage = async (req, res) => {
@@ -223,7 +224,7 @@ const getTimeStats = async (req, res) => {
     let pointageMatch = { ...dateFilter };
 
     // Pour filtrer les pointages par service/uap de l'employé
-    let employeFilter = { statut: 'actif' };
+    let employeFilter = {}; // Inclure tous par défaut
     if (service) employeFilter.service = service;
     if (uap) employeFilter.uap = uap;
 
@@ -474,4 +475,78 @@ const getTimeDisciplineStats = async (req, res) => {
   }
 };
 
-module.exports = { createPointage, getPointagesByEmploye, getRetardsOfDay, getAbsencesOfDay, getTimeStats, getTimeDisciplineStats };
+const getTopDisciplined = async (req, res) => {
+  try {
+    const { service, uap, mois, annee, date_debut, date_fin } = req.query;
+
+    let dateFilter = {};
+    if (date_debut && date_fin) {
+      dateFilter.date = { $gte: new Date(date_debut), $lte: new Date(date_fin) };
+    } else if (mois && annee) {
+      const startDate = new Date(annee, mois - 1, 1);
+      const endDate = new Date(annee, mois, 0, 23, 59, 59, 999);
+      dateFilter.date = { $gte: startDate, $lte: endDate };
+    } else {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      dateFilter.date = { $gte: startOfToday };
+    }
+
+    // 1. Filtrer les employés par service/uap
+    let employeMatch = { statut: 'actif' };
+    if (service) employeMatch.service = new mongoose.Types.ObjectId(service);
+    if (uap) employeMatch.uap = new mongoose.Types.ObjectId(uap);
+
+    // 2. Agrégation
+    const ranking = await Pointage.aggregate([
+      { $match: dateFilter },
+      {
+        $lookup: {
+          from: 'employes',
+          localField: 'employe',
+          foreignField: '_id',
+          as: 'details'
+        }
+      },
+      { $unwind: '$details' },
+      { $match: { 'details.statut': 'actif' } },
+      // Apply service/uap filters if provided
+      ...(service ? [{ $match: { 'details.service': new mongoose.Types.ObjectId(service) } }] : []),
+      ...(uap ? [{ $match: { 'details.uap': new mongoose.Types.ObjectId(uap) } }] : []),
+      {
+        $group: {
+          _id: '$employe',
+          nom: { $first: '$details.nom' },
+          prenom: { $first: '$details.prenom' },
+          matricule: { $first: '$details.matricule' },
+          totalRetards: { $sum: '$retard_minutes' },
+          totalAbsences: { 
+            $sum: { $cond: [{ $eq: ['$absence', true] }, 1, 0] }
+          }
+        }
+      },
+      {
+        $sort: {
+          totalAbsences: 1,
+          totalRetards: 1,
+          nom: 1
+        }
+      },
+      { $limit: 10 }
+    ]);
+
+    res.json(ranking);
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur lors du calcul du classement discipline', error: error.message });
+  }
+};
+
+module.exports = { 
+  createPointage, 
+  getPointagesByEmploye, 
+  getRetardsOfDay, 
+  getAbsencesOfDay, 
+  getTimeStats, 
+  getTimeDisciplineStats,
+  getTopDisciplined 
+};

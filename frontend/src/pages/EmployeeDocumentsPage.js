@@ -22,7 +22,7 @@ const EmployeeDocumentsPage = () => {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get('/api/documents/my-requests');
+      const res = await apiClient.get('/documents');
       setRequests(res.data);
     } catch (err) {
       console.error('Erreur lors de la récupération des demandes', err);
@@ -34,7 +34,7 @@ const EmployeeDocumentsPage = () => {
 
   const fetchTypes = async () => {
     try {
-      const res = await apiClient.get('/api/document-types');
+      const res = await apiClient.get('/document-types');
       setDocumentTypes(res.data);
       if (res.data.length > 0) {
         setFormData(prev => ({ ...prev, type_document: res.data[0].name }));
@@ -50,7 +50,7 @@ const EmployeeDocumentsPage = () => {
     setSuccessMessage('');
     
     try {
-      await apiClient.post('/api/documents', formData);
+      await apiClient.post('/documents', formData);
       setSuccessMessage('✅ Demande envoyée avec succès');
       setShowForm(false);
       setFormData({ type_document: documentTypes[0]?.name || '', message: '' });

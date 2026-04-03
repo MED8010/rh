@@ -477,7 +477,7 @@ const EmployesPage = () => {
       <div style={{
         display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap'
       }}>
-        <div className="search-bar" style={{ flex: 1, minWidth: '300px' }}>
+        <div className="search-bar" style={{ flex: 1, minWidth: '300px',backgroundColor: 'var(--primary-light)' }}>
           <span className="search-icon">🔍</span>
           <input
             type="text"

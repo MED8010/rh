@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../services/api';
+import pdfService from '../services/pdfService';
 import '../styles/Dashboard.css';
 
 const REJECT_REASONS = [
@@ -11,6 +12,7 @@ const REJECT_REASONS = [
 
 const AdminCongesPage = () => {
   const [conges, setConges] = useState([]);
+  const [allConges, setAllConges] = useState([]); // Pour garder les stats globales
   const [loading, setLoading] = useState(true);
   const [employes, setEmployes] = useState([]);
   const [rejectModal, setRejectModal] = useState(null);
@@ -18,17 +20,14 @@ const AdminCongesPage = () => {
   const [filters, setFilters] = useState({ statut: 'tous', employe_id: '', type: 'tous' });
   const [feedbackMsg, setFeedbackMsg] = useState('');
 
-  useEffect(() => { loadData(); }, []);
-  useEffect(() => { loadConges(); }, [filters]); // eslint-disable-line
-
-  const loadData = async () => {
+  const loadData = React.useCallback(async () => {
     try {
       const res = await apiClient.get('/employes');
       setEmployes(res.data);
     } catch (err) { console.error(err); }
-  };
+  }, []);
 
-  const loadConges = async () => {
+  const loadConges = React.useCallback(async () => {
     try {
       setLoading(true);
       let params = {};
@@ -37,9 +36,17 @@ const AdminCongesPage = () => {
       if (filters.type !== 'tous') params.type = filters.type;
       const res = await apiClient.get('/conges', { params });
       setConges(res.data);
+
+      let statsParams = { ...params };
+      delete statsParams.statut;
+      const resStats = await apiClient.get('/conges', { params: statsParams });
+      setAllConges(resStats.data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  };
+  }, [filters]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { loadConges(); }, [loadConges]);
 
   const showFeedback = (msg) => {
     setFeedbackMsg(msg);
@@ -70,16 +77,20 @@ const AdminCongesPage = () => {
   };
 
   const stats = {
-    total: conges.length,
-    enAttente: conges.filter(c => c.statut === 'demande').length,
-    approuves: conges.filter(c => c.statut === 'approuve').length,
-    refuses: conges.filter(c => c.statut === 'refuse').length,
+    total: allConges.length,
+    enAttente: allConges.filter(c => c.statut === 'demande').length,
+    approuves: allConges.filter(c => c.statut === 'approuve').length,
+    refuses: allConges.filter(c => c.statut === 'refuse').length,
   };
 
   const selectStyle = {
     padding: '10px 14px', borderRadius: 'var(--radius-sm)',
     border: '1px solid var(--border)', background: 'var(--bg-card)',
     color: 'var(--text-primary)', fontFamily: 'inherit', fontSize: 13.5,
+  };
+
+  const handleKpiClick = (statut) => {
+    setFilters(prev => ({ ...prev, statut }));
   };
 
   if (loading) return <div className="loading"><div className="spinner"></div>Chargement des congés...</div>;
@@ -89,10 +100,15 @@ const AdminCongesPage = () => {
       {/* Reject Modal */}
       {rejectModal && (
         <div className="modal-overlay" onClick={() => setRejectModal(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
-            <div className="modal-header">
-              <h3>❌ Refuser la Demande de Congé</h3>
-              <button className="modal-close" onClick={() => setRejectModal(null)}>✕</button>
+          <div className="modal-content animate-slide-in" onClick={e => e.stopPropagation()} style={{ 
+            maxWidth: 460, 
+            background: 'var(--bg-card)', 
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-xl)'
+          }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid var(--border)' }}>
+              <h3 style={{ color: 'var(--text-primary)' }}>❌ Refuser la Demande de Congé</h3>
+              <button className="modal-close" onClick={() => setRejectModal(null)} style={{ color: 'var(--text-muted)' }}>✕</button>
             </div>
             <div style={{ padding: '20px 24px' }}>
               <p style={{ marginBottom: 16, color: 'var(--text-secondary)', fontSize: 14 }}>
@@ -105,6 +121,8 @@ const AdminCongesPage = () => {
                     padding: '10px 14px', borderRadius: 8, cursor: 'pointer',
                     border: `1px solid ${rejectReason === r ? 'var(--primary)' : 'var(--border)'}`,
                     background: rejectReason === r ? 'var(--primary-glow)' : 'var(--bg-hover)',
+                    color: 'var(--text-primary)',
+                    transition: 'all 0.2s ease'
                   }}>
                     <input type="radio" value={r} checked={rejectReason === r} onChange={() => setRejectReason(r)} />
                     <span style={{ fontSize: 13.5 }}>{r}</span>
@@ -118,12 +136,13 @@ const AdminCongesPage = () => {
                 style={{
                   width: '100%', padding: 12, borderRadius: 8,
                   border: '1px solid var(--border)', background: 'var(--bg-hover)',
-                  color: 'var(--text-primary)', fontFamily: 'inherit', resize: 'vertical', minHeight: 80
+                  color: 'var(--text-primary)', fontFamily: 'inherit', resize: 'vertical', minHeight: 80,
+                  outline: 'none'
                 }}
               />
-              <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
                 <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setRejectModal(null)}>Annuler</button>
-                <button className="btn-delete" style={{ flex: 1 }} onClick={handleReject}>Confirmer le Refus</button>
+                <button className="btn-delete" style={{ flex: 1, padding: '10px' }} onClick={handleReject}>Confirmer le Refus</button>
               </div>
             </div>
           </div>
@@ -142,23 +161,51 @@ const AdminCongesPage = () => {
 
       {/* KPIs */}
       <div className="kpi-container">
-        <div className="kpi-card kpi-primary">
+        <div 
+          className={`kpi-card kpi-primary clickable-card ${filters.statut === 'tous' ? 'active-kpi' : ''}`}
+          onClick={() => handleKpiClick('tous')}
+        >
           <div className="kpi-card-top"><div className="kpi-icon-box">📋</div></div>
           <div><p className="kpi-label">Total Demandes</p><p className="kpi-value">{stats.total}</p></div>
         </div>
-        <div className="kpi-card kpi-warning">
+        <div 
+          className={`kpi-card kpi-warning clickable-card ${filters.statut === 'demande' ? 'active-kpi-warning' : ''}`}
+          onClick={() => handleKpiClick('demande')}
+        >
           <div className="kpi-card-top"><div className="kpi-icon-box">⏳</div></div>
           <div><p className="kpi-label">En Attente</p><p className="kpi-value">{stats.enAttente}</p><p className="kpi-subtitle">à traiter</p></div>
         </div>
-        <div className="kpi-card kpi-success">
+        <div 
+          className={`kpi-card kpi-success clickable-card ${filters.statut === 'approuve' ? 'active-kpi-success' : ''}`}
+          onClick={() => handleKpiClick('approuve')}
+        >
           <div className="kpi-card-top"><div className="kpi-icon-box">✅</div></div>
           <div><p className="kpi-label">Approuvés</p><p className="kpi-value">{stats.approuves}</p></div>
         </div>
-        <div className="kpi-card kpi-danger">
+        <div 
+          className={`kpi-card kpi-danger clickable-card ${filters.statut === 'refuse' ? 'active-kpi-danger' : ''}`}
+          onClick={() => handleKpiClick('refuse')}
+        >
           <div className="kpi-card-top"><div className="kpi-icon-box">❌</div></div>
           <div><p className="kpi-label">Refusés</p><p className="kpi-value">{stats.refuses}</p></div>
         </div>
       </div>
+
+      <style>{`
+        .clickable-card {
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: 2px solid transparent;
+        }
+        .clickable-card:hover {
+          transform: translateY(-4px);
+          box-shadow: var(--shadow-lg);
+        }
+        .active-kpi { border-color: var(--primary); background: var(--primary-glow) !important; }
+        .active-kpi-warning { border-color: var(--warning); background: var(--warning-bg) !important; }
+        .active-kpi-success { border-color: var(--success); background: var(--success-bg) !important; }
+        .active-kpi-danger { border-color: var(--danger); background: var(--danger-bg) !important; }
+      `}</style>
 
       {/* Filters */}
       <div style={{
@@ -194,10 +241,17 @@ const AdminCongesPage = () => {
             {employes.map(e => <option key={e._id} value={e._id}>{e.prenom} {e.nom}</option>)}
           </select>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-          <button className="btn-secondary" style={{ width: '100%' }}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
+          <button className="btn-secondary" style={{ flex: 1 }}
             onClick={() => setFilters({ statut: 'tous', employe_id: '', type: 'tous' })}>
-            ↻ Réinitialiser
+            ↻
+          </button>
+          <button 
+            className="btn-view" 
+            onClick={() => pdfService.exportCongesReport(conges)}
+            style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13 }}
+          >
+            📄 PDF
           </button>
         </div>
       </div>

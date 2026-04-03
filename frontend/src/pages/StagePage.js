@@ -26,11 +26,12 @@ const StagePage = () => {
 
   const loadStages = async () => {
     try {
+      setLoading(true);
       const response = await apiClient.get('/stages/my-requests');
       setStages(response.data);
     } catch (error) {
       console.error('Erreur chargement stages:', error);
-      setError('Erreur lors du chargement');
+      setError('Erreur lors du chargement des demandes');
     } finally {
       setLoading(false);
     }
@@ -50,229 +51,184 @@ const StagePage = () => {
     setSuccessMessage('');
 
     if (!formData.titre || !formData.description || !formData.date_debut || !formData.date_fin || !formData.entreprise) {
-      setError('Veuillez remplir tous les champs');
+      setError('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
     try {
       await apiClient.post('/stages', formData);
-      setSuccessMessage('Demande de stage créée avec succès');
+      setSuccessMessage('Votre demande de stage a été envoyée avec succès');
       setFormData({ titre: '', description: '', domaine: 'informatique', date_debut: '', date_fin: '', entreprise: '' });
       setShowForm(false);
       loadStages();
 
-      setTimeout(() => setSuccessMessage(''), 3000);
+      setTimeout(() => setSuccessMessage(''), 4000);
     } catch (error) {
-      setError(error.response?.data?.message || 'Erreur lors de la création');
+      setError(error.response?.data?.message || 'Erreur lors de la création de la demande');
       console.error(error);
     }
   };
 
-  if (loading) {
-    return <div className="loading">Chargement...</div>;
+  if (loading && stages.length === 0) {
+    return <div className="loading"><div className="spinner"></div>Chargement de vos demandes...</div>;
   }
 
   return (
-    <div className="dashboard">
-      <h1>📚 Demandes de Stage</h1>
-
-      {error && (
-        <div style={{
-          background: '#fff3cd',
-          color: '#856404',
-          padding: '12px',
-          borderRadius: '5px',
-          marginBottom: '20px'
-        }}>
-          ⚠️ {error}
+    <div className="dashboard-container">
+      <div className="page-header">
+        <div className="page-title-group">
+          <h1>📚 Mes Demandes de Stage</h1>
+          <p className="page-subtitle">Suivez l'état de vos demandes de stage en cours</p>
         </div>
-      )}
+        <button
+          className={showForm ? "btn-secondary" : "btn-primary"}
+          onClick={() => setShowForm(!showForm)}
+        >
+          {showForm ? '✕ Annuler' : '➕ Nouvelle Demande'}
+        </button>
+      </div>
 
-      {successMessage && (
-        <div style={{
-          background: '#d4edda',
-          color: '#155724',
-          padding: '12px',
-          borderRadius: '5px',
-          marginBottom: '20px'
-        }}>
-          ✅ {successMessage}
-        </div>
-      )}
-
-      <button
-        onClick={() => setShowForm(!showForm)}
-        style={{
-          padding: '10px 20px',
-          background: '#667eea',
-          color: 'white',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: 'pointer',
-          marginBottom: '20px',
-          fontWeight: 'bold'
-        }}
-      >
-        {showForm ? '✕ Annuler' : '➕ Nouvelle Demande'}
-      </button>
+      {error && <div className="error-message">⚠️ {error}</div>}
+      {successMessage && <div className="success-message">✅ {successMessage}</div>}
 
       {showForm && (
-        <div className="table-container" style={{ marginBottom: '20px' }}>
-          <h2>Formulaire de Demande de Stage</h2>
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-              <div>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>
-                  Titre du Stage *
-                </label>
+        <div className="section-card animate-slide-in" style={{ marginBottom: '28px' }}>
+          <h3>📝 Formulaire de Demande</h3>
+          <form onSubmit={handleSubmit} className="premium-form">
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Titre du Stage <span className="required">*</span></label>
                 <input
                   type="text"
                   name="titre"
                   value={formData.titre}
                   onChange={handleChange}
-                  placeholder="Ex: Développeur Full Stack"
-                  style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}
+                  placeholder="Ex: Développeur React"
+                  required
                 />
               </div>
 
-              <div>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>
-                  Entreprise *
-                </label>
+              <div className="form-group">
+                <label>Entreprise <span className="required">*</span></label>
                 <input
                   type="text"
                   name="entreprise"
                   value={formData.entreprise}
                   onChange={handleChange}
-                  placeholder="Ex: Microsoft"
-                  style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}
+                  placeholder="Ex: LPE Solutions"
+                  required
                 />
               </div>
 
-              <div>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>
-                  Domaine *
-                </label>
+              <div className="form-group">
+                <label>Domaine <span className="required">*</span></label>
                 <select
                   name="domaine"
                   value={formData.domaine}
                   onChange={handleChange}
-                  style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}
+                  required
                 >
                   <option value="informatique">Informatique</option>
-                  <option value="ressources_humaines">Ressources Humaines</option>
-                  <option value="finance">Finance</option>
-                  <option value="marketing">Marketing</option>
+                  <option value="ressources_humaines">RH / Admin</option>
+                  <option value="finance">Finance / Comptabilité</option>
+                  <option value="marketing">Marketing / Comm</option>
+                  <option value="production">Production / Logistique</option>
                   <option value="autre">Autre</option>
                 </select>
               </div>
 
-              <div>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>
-                  Date de Début *
-                </label>
+              <div className="form-group">
+                <label>Date de Début <span className="required">*</span></label>
                 <input
                   type="date"
                   name="date_debut"
                   value={formData.date_debut}
                   onChange={handleChange}
-                  style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}
+                  required
                 />
               </div>
 
-              <div>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>
-                  Date de Fin *
-                </label>
+              <div className="form-group">
+                <label>Date de Fin <span className="required">*</span></label>
                 <input
                   type="date"
                   name="date_fin"
                   value={formData.date_fin}
                   onChange={handleChange}
-                  style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}
+                  required
                 />
               </div>
-
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>
-                  Description *
-                </label>
+              
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <label>Description du projet <span className="required">*</span></label>
                 <textarea
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  placeholder="Décrivez votre projet de stage..."
+                  placeholder="Détaillez vos objectifs et missions prévues..."
                   rows="4"
-                  style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px' }}
+                  required
                 />
               </div>
             </div>
 
-            <button
-              type="submit"
-              style={{
-                marginTop: '15px',
-                padding: '12px 30px',
-                background: '#667eea',
-                color: 'white',
-                border: 'none',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: '16px'
-              }}
-            >
-              ✅ Soumettre Demande
-            </button>
+            <div className="form-actions" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+              <button type="submit" className="btn-primary">✅ Envoyer la Demande</button>
+            </div>
           </form>
         </div>
       )}
 
-      <div className="table-container">
-        <h2>Mes Demandes de Stage ({stages.length})</h2>
-        {stages.length === 0 ? (
-          <p style={{ color: '#999', textAlign: 'center', padding: '20px' }}>
-            Aucune demande de stage créée
-          </p>
-        ) : (
-          <table style={{ width: '100%' }}>
+      <div className="section-card">
+        <div className="section-header" style={{ marginBottom: 20 }}>
+          <h3>📋 Historique des Demandes</h3>
+        </div>
+        
+        <div className="table-wrapper">
+          <table className="data-table">
             <thead>
-              <tr style={{ background: '#f8f9fa' }}>
-                <th style={{ padding: '12px', textAlign: 'left' }}>Titre</th>
-                <th style={{ padding: '12px', textAlign: 'left' }}>Entreprise</th>
-                <th style={{ padding: '12px', textAlign: 'left' }}>Domaine</th>
-                <th style={{ padding: '12px', textAlign: 'left' }}>Dates</th>
-                <th style={{ padding: '12px', textAlign: 'center' }}>Statut</th>
+              <tr>
+                <th>Titre / Entreprise</th>
+                <th>Domaine</th>
+                <th>Période</th>
+                <th style={{ textAlign: 'center' }}>Statut</th>
               </tr>
             </thead>
             <tbody>
               {stages.map(stage => (
-                <tr key={stage._id} style={{ borderBottom: '1px solid #eee' }}>
-                  <td style={{ padding: '12px' }}>
-                    <strong>{stage.titre}</strong>
+                <tr key={stage._id}>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                       <strong style={{ color: 'var(--text-primary)' }}>{stage.titre}</strong>
+                       <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{stage.entreprise}</span>
+                    </div>
                   </td>
-                  <td style={{ padding: '12px' }}>{stage.entreprise}</td>
-                  <td style={{ padding: '12px' }}>{stage.domaine}</td>
-                  <td style={{ padding: '12px', fontSize: '13px' }}>
-                    {new Date(stage.date_debut).toLocaleDateString('fr-FR')} → {new Date(stage.date_fin).toLocaleDateString('fr-FR')}
+                  <td><span className="badge badge-info">{stage.domaine?.replace('_', ' ')}</span></td>
+                  <td style={{ fontSize: 13 }}>
+                    {new Date(stage.date_debut).toLocaleDateString('fr-FR')} 
+                    <span style={{ margin: '0 5px', color: 'var(--text-muted)' }}>→</span>
+                    {new Date(stage.date_fin).toLocaleDateString('fr-FR')}
                   </td>
-                  <td style={{ padding: '12px', textAlign: 'center' }}>
-                    <span style={{
-                      padding: '5px 10px',
-                      borderRadius: '20px',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      background: stage.statut === 'approuve' ? '#d4edda' : stage.statut === 'refuse' ? '#f8d7da' : '#fff3cd',
-                      color: stage.statut === 'approuve' ? '#155724' : stage.statut === 'refuse' ? '#721c24' : '#856404'
-                    }}>
+                  <td style={{ textAlign: 'center' }}>
+                    <span className={`badge ${
+                      stage.statut === 'approuve' ? 'badge-success' : 
+                      stage.statut === 'refuse' ? 'badge-danger' : 'badge-warning'
+                    }`}>
                       {stage.statut.charAt(0).toUpperCase() + stage.statut.slice(1)}
                     </span>
                   </td>
                 </tr>
               ))}
+              {stages.length === 0 && (
+                <tr>
+                  <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                    Vous n'avez aucune demande de stage pour le moment.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
-        )}
+        </div>
       </div>
     </div>
   );

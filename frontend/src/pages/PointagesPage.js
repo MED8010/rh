@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
+import pdfService from '../services/pdfService';
 import '../styles/Dashboard.css';
 
 const PointagesPage = () => {
@@ -14,15 +15,7 @@ const PointagesPage = () => {
   const [selectedService, setSelectedService] = useState('');
   const [selectedUap, setSelectedUap] = useState('');
 
-  useEffect(() => { 
-    loadStructures();
-  }, []);
-
-  useEffect(() => { 
-    loadData(); 
-  }, [selectedDate, selectedService, selectedUap]);
-
-  const loadStructures = async () => {
+  const loadStructures = useCallback(async () => {
     try {
       const [servRes, uapRes] = await Promise.all([
         apiClient.get('/structure/services'),
@@ -33,9 +26,9 @@ const PointagesPage = () => {
     } catch (error) {
       console.error('Erreur structures:', error);
     }
-  };
+  }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -54,11 +47,17 @@ const PointagesPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate, selectedService, selectedUap]);
+
+  useEffect(() => { 
+    loadStructures();
+  }, [loadStructures]);
+
+  useEffect(() => { 
+    loadData(); 
+  }, [loadData]);
 
   if (loading) return <div className="loading"><div className="spinner"></div>Chargement des pointages...</div>;
-
-  const totalPresents = retards.length + absences.length;
 
   const filteredRetards = retards.filter(r =>
     `${r.employe?.prenom} ${r.employe?.nom}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -66,8 +65,6 @@ const PointagesPage = () => {
   const filteredAbsences = absences.filter(a =>
     `${a.employe?.prenom} ${a.employe?.nom}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <div className="dashboard-container">
@@ -85,193 +82,127 @@ const PointagesPage = () => {
             style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontWeight: 600 }}
           />
           <button className="btn-primary" onClick={loadData}>🔄 Actualiser</button>
+          <button 
+            className="btn-view" 
+            onClick={() => pdfService.exportPointagesReport(activeTab === 'retards' ? filteredRetards : filteredAbsences, activeTab, new Date(selectedDate).toLocaleDateString())}
+            style={{ padding: '8px 14px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            📄 Export {activeTab === 'retards' ? 'Retards' : 'Absences'}
+          </button>
         </div>
       </div>
 
       {/* KPI Summary */}
       <div className="kpi-container" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         <div className="kpi-card kpi-warning">
-          <div className="kpi-card-top">
-            <div className="kpi-icon-box">⚠️</div>
-          </div>
-          <div>
-            <p className="kpi-label">Retards</p>
-            <p className="kpi-value">{retards.length}</p>
-            <p className="kpi-subtitle">aujourd'hui</p>
-          </div>
+          <div className="kpi-card-top"><div className="kpi-icon-box">🕒</div></div>
+          <div><p className="kpi-label">Total Retards</p><p className="kpi-value">{retards.length}</p></div>
         </div>
         <div className="kpi-card kpi-danger">
-          <div className="kpi-card-top">
-            <div className="kpi-icon-box">❌</div>
-          </div>
-          <div>
-            <p className="kpi-label">Absences</p>
-            <p className="kpi-value">{absences.length}</p>
-            <p className="kpi-subtitle">aujourd'hui</p>
-          </div>
-        </div>
-        <div className="kpi-card kpi-primary">
-          <div className="kpi-card-top">
-            <div className="kpi-icon-box">📊</div>
-          </div>
-          <div>
-            <p className="kpi-label">Total Signalés</p>
-            <p className="kpi-value">{totalPresents}</p>
-            <p className="kpi-subtitle">retards + absences</p>
-          </div>
+          <div className="kpi-card-top"><div className="kpi-icon-box">🚫</div></div>
+          <div><p className="kpi-label">Total Absences</p><p className="kpi-value">{absences.length}</p></div>
         </div>
       </div>
 
-      {/* Search */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        <div className="search-bar" style={{ flex: 1, minWidth: '300px' }}>
-          <span className="search-icon">🔍</span>
-          <input
-            type="text"
-            placeholder="Rechercher un employé..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
+      {/* Filters Toolbar */}
+      <div className="section-card" style={{ marginBottom: 20, padding: '16px 20px' }}>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="form-group" style={{ margin: 0, minWidth: 200 }}>
+            <label style={{ fontSize: 12 }}>Rechercher un employé</label>
+            <input 
+              type="text" 
+              placeholder="Nom ou prénom..." 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', width: '100%', background: 'var(--bg-hover)' }}
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0, minWidth: 150 }}>
+            <label style={{ fontSize: 12 }}>Filtrer par Service</label>
+            <select 
+              value={selectedService} 
+              onChange={e => setSelectedService(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', width: '100%', background: 'var(--bg-hover)' }}
+            >
+              <option value="">Tous les services</option>
+              {services.map(s => <option key={s._id} value={s._id}>{s.nom_service}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{ margin: 0, minWidth: 150 }}>
+            <label style={{ fontSize: 12 }}>Filtrer par UAP</label>
+            <select 
+              value={selectedUap} 
+              onChange={e => setSelectedUap(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', width: '100%', background: 'var(--bg-hover)' }}
+            >
+              <option value="">Toutes les UAPs</option>
+              {uaps.map(u => <option key={u._id} value={u._id}>{u.nom_uap}</option>)}
+            </select>
+          </div>
         </div>
-        
-        <select
-          value={selectedService}
-          onChange={e => setSelectedService(e.target.value)}
-          style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13.5px', cursor: 'pointer', minWidth: '180px' }}
-        >
-          <option value="">Tous les Services</option>
-          {services.map(s => <option key={s._id} value={s._id}>{s.nom_service}</option>)}
-        </select>
-
-        <select
-          value={selectedUap}
-          onChange={e => setSelectedUap(e.target.value)}
-          style={{ padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '13.5px', cursor: 'pointer', minWidth: '180px' }}
-        >
-          <option value="">Toutes les UAPs</option>
-          {uaps.map(u => <option key={u._id} value={u._id}>{u.nom_uap}</option>)}
-        </select>
       </div>
 
       {/* Tabs */}
-      <div className="admin-tabs">
-        <button className={`tab-btn${activeTab === 'retards' ? ' active' : ''}`} onClick={() => setActiveTab('retards')}>
-          ⚠️ Retards ({retards.length})
+      <div className="tabs-container" style={{ marginBottom: 20 }}>
+        <button className={`tab-btn ${activeTab === 'retards' ? 'active' : ''}`} onClick={() => setActiveTab('retards')}>
+          🕒 Retards ({filteredRetards.length})
         </button>
-        <button className={`tab-btn${activeTab === 'absences' ? ' active' : ''}`} onClick={() => setActiveTab('absences')}>
-          ❌ Absences ({absences.length})
+        <button className={`tab-btn ${activeTab === 'absences' ? 'active' : ''}`} onClick={() => setActiveTab('absences')}>
+          🚫 Absences ({filteredAbsences.length})
         </button>
       </div>
 
-      {/* Retards Tab */}
-      {activeTab === 'retards' && (
-        <div className="tab-content">
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead>
+      {/* Table */}
+      <div className="section-card">
+        <div className="table-wrapper">
+          <table className="data-table">
+            <thead>
+              {activeTab === 'retards' ? (
                 <tr>
                   <th>Employé</th>
                   <th>Matricule</th>
                   <th>Service</th>
-                  <th>Heure d'Entrée</th>
-                  <th>Retard</th>
-                  <th>Sévérité</th>
+                  <th>UAP</th>
+                  <th>Heure Entrée</th>
+                  <th>Retard (min)</th>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredRetards.length > 0 ? filteredRetards.map(r => {
-                  const mins = r.retard_minutes || 0;
-                  const severity = mins > 30 ? 'danger' : mins > 15 ? 'warning' : 'neutral';
-                  return (
-                    <tr key={r._id}>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{
-                            width: 32, height: 32, borderRadius: '50%',
-                            background: 'var(--warning-bg)', color: 'var(--warning)',
-                            fontWeight: 700, fontSize: 12,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                          }}>
-                            {r.employe?.prenom?.[0]}{r.employe?.nom?.[0]}
-                          </div>
-                          <span><strong>{r.employe?.prenom} {r.employe?.nom}</strong></span>
-                        </div>
-                      </td>
-                      <td style={{ color: 'var(--text-secondary)' }}>{r.employe?.matricule || '—'}</td>
-                      <td>{r.employe?.service?.nom_service || '—'}</td>
-                      <td><strong>{r.heure_entree}</strong></td>
-                      <td>
-                        <span style={{ color: 'var(--warning)', fontWeight: 700 }}>
-                          +{mins} min
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`badge badge-${severity}`}>
-                          {mins > 30 ? '🔴 Grave' : mins > 15 ? '🟡 Modéré' : '🟢 Léger'}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                }) : (
-                  <tr>
-                    <td colSpan="6" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-                      {searchTerm ? '🔍 Aucun résultat' : '🎉 Aucun retard aujourd\'hui !'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Absences Tab */}
-      {activeTab === 'absences' && (
-        <div className="tab-content">
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead>
+              ) : (
                 <tr>
                   <th>Employé</th>
                   <th>Matricule</th>
                   <th>Service</th>
+                  <th>UAP</th>
                   <th>Motif</th>
-                  <th>Statut</th>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredAbsences.length > 0 ? filteredAbsences.map(a => (
-                  <tr key={a._id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                          width: 32, height: 32, borderRadius: '50%',
-                          background: 'var(--danger-bg)', color: 'var(--danger)',
-                          fontWeight: 700, fontSize: 12,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                          {a.employe?.prenom?.[0]}{a.employe?.nom?.[0]}
-                        </div>
-                        <span><strong>{a.employe?.prenom} {a.employe?.nom}</strong></span>
-                      </div>
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{a.employe?.matricule || '—'}</td>
-                    <td>{a.employe?.service?.nom_service || '—'}</td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{a.motif_absence || '—'}</td>
-                    <td><span className="badge badge-danger">❌ Absent</span></td>
+              )}
+            </thead>
+            <tbody>
+              {activeTab === 'retards' ? (
+                filteredRetards.length > 0 ? filteredRetards.map((r, i) => (
+                  <tr key={i}>
+                    <td><strong>{r.employe?.prenom} {r.employe?.nom}</strong></td>
+                    <td><span className="badge badge-neutral">{r.employe?.matricule}</span></td>
+                    <td style={{ fontSize: 13 }}>{r.employe?.service?.nom_service || '—'}</td>
+                    <td style={{ fontSize: 13 }}>{r.employe?.uap?.nom_uap || '—'}</td>
+                    <td>{r.heure_entree}</td>
+                    <td><span className="badge badge-warning" style={{ fontWeight: 700 }}>+{r.retard_minutes} min</span></td>
                   </tr>
-                )) : (
-                  <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-                      {searchTerm ? '🔍 Aucun résultat' : '🎉 Aucune absence aujourd\'hui !'}
-                    </td>
+                )) : <tr><td colSpan="6" style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>✅ Aucun retard signalé</td></tr>
+              ) : (
+                filteredAbsences.length > 0 ? filteredAbsences.map((a, i) => (
+                  <tr key={i}>
+                    <td><strong>{a.employe?.prenom} {a.employe?.nom}</strong></td>
+                    <td><span className="badge badge-neutral">{a.employe?.matricule}</span></td>
+                    <td style={{ fontSize: 13 }}>{a.employe?.service?.nom_service || '—'}</td>
+                    <td style={{ fontSize: 13 }}>{a.employe?.uap?.nom_uap || '—'}</td>
+                    <td style={{ fontStyle: 'italic', color: 'var(--danger)' }}>{a.motif_absence || 'Non justifié'}</td>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                )) : <tr><td colSpan="5" style={{ textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>✅ Aucune absence signalée</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
     </div>
   );
 };

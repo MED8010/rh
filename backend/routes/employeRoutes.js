@@ -8,7 +8,8 @@ const {
   getEmployeStats,
   exportEmployes,
   importEmployes,
-  uploadExcel
+  uploadExcel,
+  getMyTeam
 } = require('../controllers/employeController');
 const verifyToken = require('../middleware/auth');
 const checkRole = require('../middleware/roles');
@@ -17,6 +18,7 @@ const router = express.Router();
 
 router.get('/export', verifyToken, checkRole(['admin', 'super_admin']), exportEmployes);
 router.post('/import', verifyToken, checkRole(['admin', 'super_admin']), uploadExcel, importEmployes);
+router.get('/my-team', verifyToken, checkRole(['chef_service', 'admin', 'super_admin']), getMyTeam);
 
 router.post('/', verifyToken, checkRole(['admin', 'super_admin']), createEmploye);
 router.get('/', verifyToken, getEmployes);

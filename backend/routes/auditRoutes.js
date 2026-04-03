@@ -6,7 +6,7 @@ const checkRole = require('../middleware/roles');
 const router = express.Router();
 
 router.post('/', verifyToken, createAuditLog);
-router.get('/', verifyToken, checkRole(['admin']), getAuditLogs);
-router.get('/stats', verifyToken, checkRole(['admin']), getAuditStats);
+router.get('/', verifyToken, checkRole(['admin', 'super_admin']), getAuditLogs);
+router.get('/stats', verifyToken, checkRole(['admin', 'super_admin']), getAuditStats);
 
 module.exports = router;

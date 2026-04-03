@@ -401,7 +401,7 @@ const deleteEmploye = async (req, res) => {
 const getEmployeStats = async (req, res) => {
   try {
     const { service, uap } = req.query;
-    let filter = { statut: 'actif' };
+    let filter = {}; // Relaxed filter to include all by default for dashboard counts
 
     if (service) filter.service = service;
     if (uap) filter.uap = uap;
@@ -570,6 +570,95 @@ const importEmployes = async (req, res) => {
   }
 };
 
+// Obtenir l'équipe du chef de service (même service)
+const getMyTeam = async (req, res) => {
+  try {
+    // 1. Trouver l'employé lié au user connecté
+    const currentUser = await User.findById(req.user.id).populate('employe');
+    if (!currentUser || !currentUser.employe) {
+      return res.status(404).json({ message: 'Profil employé non trouvé' });
+    }
+
+    const myServiceId = currentUser.employe.service;
+    if (!myServiceId) {
+      return res.status(400).json({ message: 'Aucun service assigné à votre profil' });
+    }
+
+    // 2. Trouver tous les employés du même service
+    const teamMembers = await Employe.find({ service: myServiceId })
+      .populate('service', 'nom_service')
+      .populate('uap', 'nom_uap')
+      .sort({ nom: 1 });
+
+    // 3. Charger les pointages du jour pour l'équipe
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const Pointage = require('../models/Pointage');
+    const todayPointages = await Pointage.find({
+      employe: { $in: teamMembers.map(e => e._id) },
+      date: { $gte: today, $lt: tomorrow }
+    }).populate('employe', 'nom prenom matricule');
+
+    // 4. Charger les congés en cours et en attente de l'équipe
+    const Conge = require('../models/Conge');
+    const teamConges = await Conge.find({
+      employe: { $in: teamMembers.map(e => e._id) },
+      $or: [
+        { statut: 'demande' },
+        { statut: 'approuve', date_fin: { $gte: today } }
+      ]
+    }).populate('employe', 'nom prenom matricule').sort({ createdAt: -1 });
+
+    // 5. Calculer les stats
+    const presentIds = new Set(todayPointages.map(p => p.employe?._id?.toString()));
+    const enCongeIds = new Set(
+      teamConges
+        .filter(c => c.statut === 'approuve' && new Date(c.date_debut) <= today && new Date(c.date_fin) >= today)
+        .map(c => c.employe?._id?.toString())
+    );
+
+    const stats = {
+      total: teamMembers.length,
+      presents: presentIds.size,
+      absents: teamMembers.length - presentIds.size - enCongeIds.size,
+      enConge: enCongeIds.size,
+      congesEnAttente: teamConges.filter(c => c.statut === 'demande').length,
+      retardsAujourdhui: todayPointages.filter(p => p.retard_minutes > 0).length,
+      totalRetardMinutes: todayPointages.reduce((sum, p) => sum + (p.retard_minutes || 0), 0),
+    };
+
+    // 6. Enrichir les membres avec leur statut du jour
+    const enrichedMembers = teamMembers.map(member => {
+      const memberIdStr = member._id.toString();
+      const pointage = todayPointages.find(p => p.employe?._id?.toString() === memberIdStr);
+      const isEnConge = enCongeIds.has(memberIdStr);
+
+      return {
+        ...member.toObject(),
+        statut_jour: isEnConge ? 'conge' : pointage ? 'present' : 'absent',
+        heure_entree: pointage?.heure_entree || null,
+        heure_sortie: pointage?.heure_sortie || null,
+        retard_minutes: pointage?.retard_minutes || 0,
+      };
+    });
+
+    res.json({
+      service: await require('../models/Service').findById(myServiceId),
+      stats,
+      membres: enrichedMembers,
+      pointages_jour: todayPointages,
+      conges: teamConges
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur getMyTeam:', error);
+    res.status(500).json({ message: 'Erreur lors du chargement de l\'équipe', error: error.message });
+  }
+};
+
 module.exports = { 
   createEmploye, 
   getEmployes, 
@@ -579,5 +668,6 @@ module.exports = {
   getEmployeStats,
   exportEmployes,
   importEmployes,
-  uploadExcel
+  uploadExcel,
+  getMyTeam
 };

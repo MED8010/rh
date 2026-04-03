@@ -25,7 +25,7 @@ const Login = () => {
       } else if (userRole === 'admin') {
         navigate('/dashboard');
       } else if (userRole === 'chef_service') {
-        navigate('/employee-dashboard');
+        navigate('/chef-dashboard');
       } else if (userRole === 'employe') {
         navigate('/employee-dashboard');
       } else {

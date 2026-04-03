@@ -70,32 +70,34 @@ const TopNavbar = () => {
   return (
     <nav className="top-navbar">
       <div className="top-navbar-left">
-        <div className="search-wrapper">
-          <span className="search-icon">🔍</span>
-          <input
-            type="text"
-            placeholder="Rechercher un employé..."
-            value={search}
-            onChange={(e) => handleSearch(e.target.value)}
-          />
-          {searchResults.length > 0 && (
-            <div className="search-results">
-              {searchResults.map(emp => (
-                <div
-                  key={emp._id}
-                  className="search-result-item"
-                  onClick={() => { navigate(`/employes/${emp._id}`); setSearch(''); setSearchResults([]); }}
-                >
-                  <div className="result-avatar">{emp.prenom[0]}{emp.nom[0]}</div>
-                  <div className="result-info">
-                    <div className="result-name">{emp.prenom} {emp.nom}</div>
-                    <div className="result-meta">{emp.matricule}</div>
+        {['admin', 'super_admin'].includes(user?.role) && (
+          <div className="search-wrapper">
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              placeholder="Rechercher un employé..."
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+            />
+            {searchResults.length > 0 && (
+              <div className="search-results">
+                {searchResults.map(emp => (
+                  <div
+                    key={emp._id}
+                    className="search-result-item"
+                    onClick={() => { navigate(`/employes/${emp._id}`); setSearch(''); setSearchResults([]); }}
+                  >
+                    <div className="result-avatar">{emp.prenom[0]}{emp.nom[0]}</div>
+                    <div className="result-info">
+                      <div className="result-name">{emp.prenom} {emp.nom}</div>
+                      <div className="result-meta">{emp.matricule}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="top-navbar-right">

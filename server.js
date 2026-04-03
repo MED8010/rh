@@ -18,8 +18,11 @@ const userRoutes = require('./backend/routes/userRoutes');
 const zkRoutes = require('./backend/routes/zkRoutes');
 const documentRoutes = require('./backend/routes/documentRoutes');
 const documentTypeRoutes = require('./backend/routes/documentTypeRoutes');
+const systemRoutes = require('./backend/routes/systemRoutes');
+const primeRoutes = require('./backend/routes/primeRoutes');
 const documentTypeController = require('./backend/controllers/documentTypeController');
 const { initSync } = require('./backend/services/zkService');
+const { initCronTasks } = require('./backend/services/cronService');
 
 // Start Server function
 const startServer = async () => {
@@ -49,6 +52,8 @@ const startServer = async () => {
     app.use('/api/biometric', zkRoutes);
     app.use('/api/documents', documentRoutes);
     app.use('/api/document-types', documentTypeRoutes);
+    app.use('/api/system', systemRoutes);
+    app.use('/api/primes', primeRoutes);
 
     // Route de test
     app.get('/api/health', (req, res) => {
@@ -66,6 +71,8 @@ const startServer = async () => {
       console.log(`✓ Serveur démarré sur le port ${PORT}`);
       // Initialiser la synchronisation biométrique
       initSync();
+      // Initialiser les tâches automatisées (Rappels, etc.)
+      initCronTasks();
       // Seed initial document types
       documentTypeController.seedTypes();
     });
