@@ -71,11 +71,12 @@ const createEmploye = async (req, res) => {
     console.log('\n--- DEBUG: REQ.BODY ---');
     console.log(req.body);
     console.log('--- END DEBUG ---\n');
-    let { matricule, nom, prenom, date_embauche, prix_heure, service, uap, email, telephone, adresse, solde_conge_total, password, role } = req.body;
+    let { matricule, nom, prenom, date_naissance, sexe, date_embauche, prix_heure, service, uap, email, telephone, adresse, solde_conge_total, password, role } = req.body;
 
-    console.log('📥 Champs déstructurés:', { matricule, nom, prenom, date_embauche, prix_heure });
+    console.log('📥 Champs déstructurés:', { matricule, nom, prenom, date_naissance, date_embauche, prix_heure });
 
     // Conversion des types
+    if (date_naissance) date_naissance = new Date(date_naissance);
     date_embauche = new Date(date_embauche);
     prix_heure = parseFloat(prix_heure);
     solde_conge_total = solde_conge_total ? parseInt(solde_conge_total) : 22;
@@ -102,6 +103,8 @@ const createEmploye = async (req, res) => {
       matricule,
       nom,
       prenom,
+      date_naissance: date_naissance || null,
+      sexe: sexe || null,
       date_embauche,
       prix_heure,
       service,
@@ -253,7 +256,7 @@ const updateEmploye = async (req, res) => {
         return res.status(400).json({ message: err.message });
       }
 
-      const { nom, prenom, email, telephone, adresse, statut, prix_heure, service, uap, solde_conge_restant, matricule, password, role } = req.body;
+      const { nom, prenom, email, telephone, adresse, statut, prix_heure, service, uap, solde_conge_restant, matricule, password, role, sexe } = req.body;
 
       // Vérification des droits
       const isAdmin = ['admin', 'super_admin'].includes(req.user.role);
@@ -286,6 +289,8 @@ const updateEmploye = async (req, res) => {
       if (isAdmin) {
         if (nom) employe.nom = nom;
         if (prenom) employe.prenom = prenom;
+        if (req.body.date_naissance) employe.date_naissance = new Date(req.body.date_naissance);
+        if (sexe) employe.sexe = sexe;
         if (statut) employe.statut = statut;
         if (prix_heure) employe.prix_heure = prix_heure;
         if (service) employe.service = service;

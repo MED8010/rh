@@ -29,6 +29,11 @@ import EmployeeDocumentsPage from './pages/EmployeeDocumentsPage';
 import AdminDocumentsPage from './pages/AdminDocumentsPage';
 import ChefServiceDashboard from './pages/ChefServiceDashboard';
 import PrimesPage from './pages/PrimesPage';
+import DashboardBIPage from './pages/DashboardBIPage';
+import DashboardPredictive from './pages/DashboardPredictive';
+import OlapCubePage from './pages/OlapCubePage';
+import DatavizPage from './pages/DatavizPage';
+
 
 import './styles/Dashboard.css';
 
@@ -125,6 +130,30 @@ function App() {
           <Route path="/salary-analytics" element={
             <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
               <AppLayout><SalaryAnalyticsDashboard /></AppLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/analytics" element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+              <AppLayout><DashboardBIPage /></AppLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/predictive" element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+              <AppLayout><DashboardPredictive /></AppLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/olap" element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+              <AppLayout><OlapCubePage /></AppLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/dataviz" element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+              <AppLayout><DatavizPage /></AppLayout>
             </ProtectedRoute>
           } />
 

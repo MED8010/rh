@@ -17,6 +17,15 @@ const employeSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  date_naissance: {
+    type: Date,
+    default: null
+  },
+  sexe: {
+    type: String,
+    enum: ['H', 'F'],
+    default: null
+  },
   date_embauche: {
     type: Date,
     required: true
@@ -76,5 +85,37 @@ const employeSchema = new mongoose.Schema({
 employeSchema.virtual('nom_complet').get(function() {
   return `${this.prenom} ${this.nom}`;
 });
+
+employeSchema.virtual('age').get(function() {
+  if (!this.date_naissance) return null;
+  const today = new Date();
+  let age = today.getFullYear() - this.date_naissance.getFullYear();
+  const monthDiff = today.getMonth() - this.date_naissance.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < this.date_naissance.getDate())) {
+    age--;
+  }
+  return age;
+});
+
+employeSchema.virtual('anciennete_ans').get(function() {
+  if (!this.date_embauche) return 0;
+  const today = new Date();
+  let years = today.getFullYear() - this.date_embauche.getFullYear();
+  const monthDiff = today.getMonth() - this.date_embauche.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < this.date_embauche.getDate())) {
+    years--;
+  }
+  return Math.max(0, years);
+});
+
+employeSchema.virtual('anciennete_jours').get(function() {
+  if (!this.date_embauche) return 0;
+  const today = new Date();
+  const timeDiff = today - this.date_embauche;
+  return Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+});
+
+employeSchema.set('toJSON', { virtuals: true });
+employeSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Employe', employeSchema);

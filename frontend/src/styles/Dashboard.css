@@ -1011,6 +1011,68 @@ body.sidebar-collapsed .main-content {
   vertical-align: middle;
 }
 
+/* ========== CUSTOM TABLE (pour les dashboards d'analyse) ========== */
+.custom-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+}
+
+.custom-table thead {
+  background: transparent;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 2px solid var(--border);
+}
+
+.custom-table th {
+  padding: 12px 14px;
+  text-align: left;
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.custom-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.15s ease;
+}
+
+.custom-table tbody tr:hover {
+  background-color: var(--bg-hover);
+}
+
+.custom-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.custom-table td {
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+/* Mode dark - amélioration de visibilité */
+body.dark-mode .custom-table thead {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom-color: var(--border);
+}
+
+body.dark-mode .custom-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .custom-table td,
+body.dark-mode .custom-table th {
+  color: var(--text-primary);
+}
+
 /* ========== BADGES ========== */
 .badge {
   display: inline-flex;

@@ -24,8 +24,8 @@ const EmployesPage = () => {
   const [filterUap, setFilterUap] = useState('');
 
   const emptyForm = {
-    matricule: '', nom: '', prenom: '', date_embauche: '',
-    prix_heure: '', service: '', uap: '', email: '',
+    matricule: '', nom: '', prenom: '', date_naissance: '', sexe: 'H',
+    date_embauche: '', prix_heure: '', service: '', uap: '', email: '',
     telephone: '', adresse: '', statut: 'actif',
     solde_conge_total: '22', password: '', role: 'employe'
   };
@@ -148,6 +148,7 @@ const EmployesPage = () => {
       nom: emp.nom,
       prenom: emp.prenom,
       sexe: emp.sexe || 'H',
+      date_naissance: emp.date_naissance ? emp.date_naissance.split('T')[0] : '',
       date_embauche: emp.date_embauche.split('T')[0],
       prix_heure: emp.prix_heure,
       service: emp.service?._id || '',
@@ -331,9 +332,21 @@ const EmployesPage = () => {
                   <div className="form-grid">
                     <div className="form-group">
                       <label>Matricule <span className="required">*</span></label>
-                      <input type="text" name="matricule" value={formData.matricule}
-                        onChange={handleChange} placeholder="ex: EMP-2024-001"
-                        disabled={!!editingId} required />
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                        <input type="text" name="matricule" value={formData.matricule}
+                          onChange={handleChange} placeholder="ex: EMP-2024-001"
+                          disabled={!!editingId} required style={{ flex: 1 }} />
+                        {!editingId && (
+                          <button 
+                            type="button" 
+                            className="btn-secondary"
+                            onClick={() => setFormData(prev => ({ ...prev, matricule: generateNewMatricule() }))}
+                            style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}
+                          >
+                            🔄 Générer
+                          </button>
+                        )}
+                      </div>
                       <small className="field-hint">Identifiant unique interne</small>
                     </div>
                     <div className="form-group">
@@ -347,11 +360,81 @@ const EmployesPage = () => {
                         onChange={handleChange} placeholder="ex: Dupont" required />
                     </div>
                     <div className="form-group">
-                      <label>Sexe</label>
-                      <select name="sexe" value={formData.sexe || 'H'} onChange={handleChange}>
-                        <option value="H">Homme</option>
-                        <option value="F">Femme</option>
-                      </select>
+                      <label>Sexe / Genre</label>
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, sexe: 'H' }))}
+                          style={{
+                            flex: 1,
+                            padding: '10px',
+                            borderRadius: 8,
+                            border: formData.sexe === 'H' ? '2px solid var(--primary)' : '1px solid var(--border)',
+                            background: formData.sexe === 'H' ? 'var(--primary-glow)' : 'var(--bg-card)',
+                            color: formData.sexe === 'H' ? 'var(--primary)' : 'var(--text-secondary)',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          👨 Homme
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, sexe: 'F' }))}
+                          style={{
+                            flex: 1,
+                            padding: '10px',
+                            borderRadius: 8,
+                            border: formData.sexe === 'F' ? '2px solid var(--secondary)' : '1px solid var(--border)',
+                            background: formData.sexe === 'F' ? 'rgba(168, 85, 247, 0.15)' : 'var(--bg-card)',
+                            color: formData.sexe === 'F' ? 'var(--secondary)' : 'var(--text-secondary)',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          👩 Femme
+                        </button>
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Date de Naissance</label>
+                      <input type="date" name="date_naissance" value={formData.date_naissance}
+                        onChange={handleChange} />
+                      <small className="field-hint">Pour le calcul d'âge</small>
+                    </div>
+                    {formData.date_naissance && (
+                      <div className="form-group" style={{ background: 'var(--primary-glow)', padding: 12, borderRadius: 8, border: '1px solid var(--primary)' }}>
+                        <label style={{ fontWeight: 700, color: 'var(--primary)' }}>👤 Âge Calculé</label>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)', marginTop: 4 }}>
+                          {(() => {
+                            const today = new Date();
+                            const birthDate = new Date(formData.date_naissance);
+                            let age = today.getFullYear() - birthDate.getFullYear();
+                            const monthDiff = today.getMonth() - birthDate.getMonth();
+                            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                              age--;
+                            }
+                            return age >= 0 ? age : 'Non valide';
+                          })()} ans
+                        </div>
+                      </div>
+                    )}
+                    <div className="form-group" style={{ background: 'var(--success-bg)', padding: 12, borderRadius: 8, border: '1px solid var(--success)' }}>
+                      <label style={{ fontWeight: 700, color: 'var(--success)' }}>⏱️ Ancienneté</label>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--success)', marginTop: 4 }}>
+                        {(() => {
+                          const today = new Date();
+                          const hireDate = new Date(formData.date_embauche);
+                          let years = today.getFullYear() - hireDate.getFullYear();
+                          const monthDiff = today.getMonth() - hireDate.getMonth();
+                          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < hireDate.getDate())) {
+                            years--;
+                          }
+                          return Math.max(0, years);
+                        })()} ans
+                      </div>
                     </div>
                     <div className="form-group">
                       <label>Email Professional {!editingId && <span className="required">*</span>}</label>
@@ -547,6 +630,8 @@ const EmployesPage = () => {
                 <tr>
                   <th>Matricule</th>
                   <th>Nom Complet</th>
+                  <th>Âge</th>
+                  <th>Ancienneté</th>
                   <th>Email</th>
                   <th>Service</th>
                   <th>UAP</th>
@@ -571,6 +656,34 @@ const EmployesPage = () => {
                           {emp.prenom[0]}{emp.nom[0]}
                         </div>
                         <span>{emp.prenom} <strong>{emp.nom}</strong></span>
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: emp.date_naissance ? 'var(--primary)' : 'var(--text-muted)' }}>
+                        {emp.date_naissance ? (() => {
+                          const today = new Date();
+                          const birthDate = new Date(emp.date_naissance);
+                          let age = today.getFullYear() - birthDate.getFullYear();
+                          const monthDiff = today.getMonth() - birthDate.getMonth();
+                          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                            age--;
+                          }
+                          return age >= 0 ? `${age} ans` : '—';
+                        })() : '—'}
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--success)' }}>
+                        {(() => {
+                          const today = new Date();
+                          const hireDate = new Date(emp.date_embauche);
+                          let years = today.getFullYear() - hireDate.getFullYear();
+                          const monthDiff = today.getMonth() - hireDate.getMonth();
+                          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < hireDate.getDate())) {
+                            years--;
+                          }
+                          return `${Math.max(0, years)} ans`;
+                        })()}
                       </div>
                     </td>
                     <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>

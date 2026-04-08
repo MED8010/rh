@@ -36,6 +36,8 @@ const seedDatabase = async () => {
       matricule: 'ADM001',
       nom: 'Admin',
       prenom: 'Système',
+      date_naissance: new Date('1988-05-15'),
+      sexe: 'H',
       date_embauche: new Date('2024-01-01'),
       prix_heure: 500,
       service: services[1]._id, // RH
@@ -64,6 +66,8 @@ const seedDatabase = async () => {
         matricule: 'EMP001',
         nom: 'Dupont',
         prenom: 'Jean',
+        date_naissance: new Date('1985-03-22'),
+        sexe: 'H',
         date_embauche: new Date('2023-01-15'),
         prix_heure: 350,
         service: services[0]._id, // IT
@@ -77,6 +81,8 @@ const seedDatabase = async () => {
         matricule: 'EMP002',
         nom: 'Martin',
         prenom: 'Marie',
+        date_naissance: new Date('1990-07-10'),
+        sexe: 'F',
         date_embauche: new Date('2023-06-01'),
         prix_heure: 300,
         service: services[3]._id, // Ventes
@@ -90,6 +96,8 @@ const seedDatabase = async () => {
         matricule: 'EMP003',
         nom: 'Bernard',
         prenom: 'Pierre',
+        date_naissance: new Date('1992-11-05'),
+        sexe: 'H',
         date_embauche: new Date('2024-01-10'),
         prix_heure: 320,
         service: services[2]._id, // Finance

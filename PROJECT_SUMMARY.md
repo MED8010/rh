@@ -6,9 +6,9 @@
 
 ### Backend Express.js (Node.js)
 
-#### Modèles de Données (16)
+#### Modèles de Données (21)
 - ✅ **User.js** — Authentification, rôles, compte utilisateur
-- ✅ **Employe.js** — Profil employé (matricule, solde congés, photo, etc.)
+- ✅ **Employe.js** — Profil employé (matricule, sexe, date_naissance, calcul âge/ancienneté, solde congés, photo, etc.)
 - ✅ **Service.js** — Services / Départements
 - ✅ **UAP.js** — Unités Autonomes de Production
 - ✅ **Pointage.js** — Suivi du temps de travail (manual + biométrique)
@@ -24,10 +24,19 @@
 - ✅ **BiometricDevice.js** — Gestion des pointeuses ZKTeco
 - ✅ **ZkLog.js** — Logs de synchronisation biométrique
 - ✅ **StageRequest.js** — Demandes de stage
+- ✅ **DW_FactAttendance.js** — Fait : Présence journalière (NEW)
+- ✅ **DW_FactSalary.js** — Fait : Paie mensuelle (NEW)
+- ✅ **DW_DimEmploye.js** — Dimension : Employé (SCD Type 2) (NEW)
+- ✅ **DW_DimDate.js** — Dimension : Calendrier BI (NEW)
 
-#### Controllers (12)
+#### Controllers (20)
 - ✅ **authController.js** — Inscription, connexion, profil
-- ✅ **employeController.js** — CRUD employés, stats, import/export Excel
+- ✅ **employeController.js** — CRUD employés (avec sexe, date_naissance), stats, import/export Excel
+- ✅ **biController.js** — ETL trigger, dimensions warehouse, stats BI
+- ✅ **mlController.js** — Moteur de prédictions (Payroll, Absentéisme, Turnover) (NEW)
+- ✅ **datavizController.js** — Agrégations pour Heatmap, Treemap, Radar, Gantt (NEW)
+- ✅ **olapController.js** — Moteur de cube multidimensionnel (Pivot) (NEW)
+- ✅ **biExportController.js** — Export CSV live pour Looker/PowerBI (NEW)
 - ✅ **pointageController.js** — Pointages, analyses, Top 10 disciplinés
 - ✅ **congeController.js** — Demandes, approbations, refus, emails
 - ✅ **salaireController.js** — Calcul automatique, validation, analytics
@@ -39,22 +48,31 @@
 - ✅ **documentTypeController.js** — Types de documents dynamiques
 - ✅ **stageController.js** — Gestion des stages
 - ✅ **userController.js** — Gestion des comptes utilisateurs
+- ✅ **systemController.js** — Monitoring et santé système (NEW)
+- ✅ **importController.js** — Logique d'import Excel complexe (NEW)
 
-#### Routes API (13 modules — 50+ endpoints)
-- ✅ **authRoutes.js** — 3 endpoints
-- ✅ **employeRoutes.js** — 8 endpoints (+ import/export)
-- ✅ **pointageRoutes.js** — 6 endpoints (+ top-disciplined)
-- ✅ **congeRoutes.js** — 5 endpoints
-- ✅ **salaireRoutes.js** — 5 endpoints
-- ✅ **structureRoutes.js** — 8 endpoints
-- ✅ **auditRoutes.js** — 3 endpoints
-- ✅ **notifications.js** — 4 endpoints
-- ✅ **documentRoutes.js** — 4 endpoints
-- ✅ **documentTypeRoutes.js** — 3 endpoints
-- ✅ **zkRoutes.js** — 6 endpoints (biométrie)
-- ✅ **primeRoutes.js** — 6 endpoints (types & attributions)
-- ✅ **userRoutes.js** — 3 endpoints
-- ✅ **stages.js** — 4 endpoints
+#### Routes API (21 modules — 80+ endpoints)
+- ✅ **authRoutes.js** — Authentification
+- ✅ **employeRoutes.js** — Gestion employés (+ import/export)
+- ✅ **pointageRoutes.js** — Suivi présence
+- ✅ **congeRoutes.js** — Gestion absences
+- ✅ **salaireRoutes.js** — Gestion paie
+- ✅ **mlRoutes.js** — IA & Prédictions (NEW)
+- ✅ **datavizRoutes.js** — Visualisations avancées (NEW)
+- ✅ **olapRoutes.js** — Cube BI (NEW)
+- ✅ **biExportRoutes.js** — Connecteurs externes (NEW)
+- ✅ **biRoutes.js** — ETL & Trigger (NEW)
+- ✅ **structureRoutes.js** — Services & UAPs
+- ✅ **auditRoutes.js** — Traçabilité
+- ✅ **notifications.js** — Messagerie in-app
+- ✅ **documentRoutes.js** — Documents administratifs
+- ✅ **documentTypeRoutes.js** — Configuration docs
+- ✅ **zkRoutes.js** — Biométrie ZKTeco
+- ✅ **primeRoutes.js** — Primes & Bonus
+- ✅ **userRoutes.js** — Comptes personnels
+- ✅ **stages.js** — Stagiaires
+- ✅ **systemRoutes.js** — Santé API
+- ✅ **importRoutes.js** — Workflow Excel (NEW)
 
 #### Middlewares
 - ✅ **auth.js** — Vérification JWT (Bearer Token)
@@ -72,42 +90,47 @@
 
 ---
 
-### Frontend React (25 Pages)
+### Frontend React (30 Pages)
 
 #### Pages Publiques
 - ✅ **Login.js** — Connexion avec redirection par rôle
 - ✅ **Register.js** — Inscription avec création profil employé
 
+#### Pages Intelligence & BI (NEW)
+- ✅ **DashboardPredictive.js** — Prévisions Masse Salariale & Absentéisme (IA)
+- ✅ **OlapCubePage.js** — Explorateur Multi-dimensionnel (Drag & Drop)
+- ✅ **DatavizPage.js** — Visualisations avancées (Heatmap, Treemap, Radar, Gantt)
+- ✅ **DashboardBIPage.js** — Vue macro des KPIs stratégiques
+
 #### Pages Admin
-- ✅ **AdminDashboard.js** — 10 KPIs, graphique Pie présence, répartition géographique, Top 10 employés disciplinés, filtres avancés
-- ✅ **EmployesPage.js** — CRUD complet, filtres, photo profil, import/export Excel, création compte
+- ✅ **AdminDashboard.js** — 10 KPIs, graphique Pie présence, répartition géographique, Top 10 employés disciplinés
+- ✅ **EmployesPage.js** — CRUD complet, filtres, photo profil, création compte
 - ✅ **EmployeDetail.js** — Fiche employé avec onglets (infos, pointages, salaires, congés)
 - ✅ **PointagesPage.js** — Tableau filtrable, ajout/modification manuelle, source biométrique
 - ✅ **SalairesPage.js** — Calcul automatique, validation individuelle/en masse, fiches de paie
-- ✅ **PrimesPage.js** — Gestion complète des primes et types de primes
 - ✅ **SalaryAnalyticsDashboard.js** — Analytiques massa salariale, tendances, graphiques
-- ✅ **AdminCongesPage.js** — KPIs cliquables (filtrage instantané), approbation/refus avec motif, dark mode compatible
-- ✅ **AdminDocumentsPage.js** — Demandes de documents, filtres, upload fichiers, types dynamiques
+- ✅ **AdminCongesPage.js** — KPIs cliquables, approbation/refus avec motif
+- ✅ **AdminDocumentsPage.js** — Demandes de documents, upload fichiers, types dynamiques
 - ✅ **AuditPage.js** — Journal d'audit complet filtrable
-- ✅ **PointeusesPage.js** — Gestion pointeuses ZKTeco, statut, synchro manuelle, logs
+- ✅ **PointeusesPage.js** — Gestion pointeuses ZKTeco, statut, synchro manuelle
 - ✅ **TimeDisciplineDashboard.js** — Analyse discipline horaire, comparaisons
-- ✅ **ConfigurationPage.js** — Paramètres système (services, UAPs, comptes, sécurité)
-- ✅ **PrimesPage.js** — Gestion des types et attribution des primes (3 onglets)
+- ✅ **ConfigurationPage.js** — Paramètres système (services, UAPs, sécurité)
+- ✅ **PrimesPage.js** — Gestion des types et attribution des primes
 - ✅ **SuperAdminDashboard.js** — Gestion globale super-admin
+- ✅ **StagePage.js** — Gestion des stages
 
 #### Pages Employé
 - ✅ **EmployeeDashboard.js** — Stats personnelles, calendrier présence, solde congés
 - ✅ **MesCongesPage.js** — Historique, nouvelle demande, solde restant
-- ✅ **EmployeeDocumentsPage.js** — Mes demandes, nouvelle demande, téléchargement
-- ✅ **ProfilePage.js** — Modification profil, photo, changement mot de passe
+- ✅ **EmployeeDocumentsPage.js** — Mes demandes, téléchargement
+- ✅ **ProfilePage.js** — Modification profil, changement mot de passe
 
 #### Pages Partagées
-- ✅ **NotificationsPage.js** — 3 KPIs, filtre non-lues, navigation intelligente au clic
+- ✅ **NotificationsPage.js** — 3 KPIs, filtre non-lues, navigation intelligente
 - ✅ **ChefServiceDashboard.js** — Tableau de bord chef de service
 - ✅ **CongesChefPage.js** — Validation congés par le chef service
 - ✅ **GestionCongesPage.js** — Vue gestion avancée des congés
-- ✅ **CongesPage.js** — Vue liste des congés
-- ✅ **StagePage.js** — Gestion des stages
+- ✅ **CongesPage.js** — Historique global des congés
 
 #### Composants Réutilisables
 - ✅ **Navigation.js** — Sidebar latérale adaptative selon le rôle
@@ -121,15 +144,14 @@
 
 | Catégorie | Nombre | Détails |
 |-----------|--------|---------|
-| **Modèles de Données** | 17 | Avec relations, validations et index |
-| **Controllers Backend** | 13 | Logique métier complète |
-| **Fichiers de Routes** | 14 | ~60+ endpoints REST |
-| **Pages Frontend** | 26 | Tous les workflows couverts |
-| **Composants** | 3 | Navigation, TopNavbar, ProtectedRoute |
+| **Modèles de Données** | 21 | Incluant DWH Modèle en Étoile |
+| **Controllers Backend** | 20 | Logique métier, BI, ML et Système |
+| **Fichiers de Routes** | 21 | ~80+ endpoints REST sécurisés |
+| **Pages Frontend** | 30 | Workflows complets Admin & Employé |
+| **Composants UI** | 8 | Navigation, TopNavbar, Charts, Modals, Feedbacks |
 | **Rôles Utilisateurs** | 4 | super_admin, admin, chef_service, employe |
-| **Types de Notifications** | 10 | In-app + email automatique |
-| **Lignes CSS** | 2 330 | Système de design tokens complet |
-| **Lignes de Code Total** | 15 000+ | Backend + Frontend combinés |
+| **Lignes de Code CSS** | 2 500+ | Design System Variable (Light/Dark) |
+| **Lignes de Code Total** | 22 000+ | Projet Full-Stack Complexe |
 
 ---
 
@@ -143,13 +165,14 @@
 - ✅ Journalisation automatique de toutes les actions (audit)
 
 ### Gestion des Employés
-- ✅ CRUD complet avec validation
+- ✅ CRUD complet avec validation (sexe, date_naissance obligatoires pour BI)
 - ✅ Upload photo de profil
 - ✅ Affectation Service & UAP
 - ✅ Import en masse via Excel (.xlsx)
 - ✅ Export de la liste en Excel
 - ✅ Création automatique du compte utilisateur
 - ✅ Fiche détaillée avec 4 onglets
+- ✅ Propriétés virtuelles : `age` (calculé depuis date_naissance), `anciennete_ans`, `anciennete_jours`
 
 ### Gestion du Temps (Pointages)
 - ✅ Saisie manuelle entrée/sortie
@@ -198,16 +221,30 @@
 - ✅ Marquage automatique comme lu au clic
 - ✅ Filtrage non-lues uniquement
 
-### Notifications Avancées 🔔
-- ✅ **Notifications Push (Web Push)** : Alertes en temps réel via Service Worker (même onglet fermé)
-- ✅ **Rappels Automatisés (Cron)** :
-  - Rappel fin de congé (J-3)
-  - Relance documents en attente (> 3 jours)
-  - Alertes absences/retards matinales
-- ✅ **Centre de Notifications** : Filtrage par catégories (RH, Paie, Pointage, Discipline, Système)
-- ✅ **Gestion des Abonnements** : Inscription sécurisée par terminal/navigateur
+### Intelligence Prédictive (IA/ML) 🧠
+- ✅ **Prévision Budgétaire** : Algorithme de régression linéaire pour projeter la masse salariale à 12 mois.
+- ✅ **Analyse du Turnover** : Scoring du risque de départ par employé (basé sur l'absentéisme et les retards).
+- ✅ **Prévision d'Absentéisme** : Détection des pics saisonniers et probabilité de surcharge.
+- ✅ **Détection d'Anomalies** : Identification des outliers (Z-Score) et risques de fraudes financières.
 
-### Emails Automatiques
+### Analyse OLAP & Big Data 📊
+- ✅ **Moteur Multi-dimensionnel** : Agrégation en temps réel sur les axes Genre, Ancienneté, Tranche d'Âge, Service.
+- ✅ **Pivot Table Dynamique** : Capacité de "drill-down" dans les données de présence et de paie.
+- ✅ **DataWarehouse (DWH)** : Architecture optimisée pour la lecture haute performance (ETL nightly).
+
+### Dataviz Avancée (ApexCharts) 🧩
+- ✅ **Heatmap des Absences** : Visualisation de la densité des absences par mois/service.
+- ✅ **Treemap Financier** : Répartition de la masse salariale macro-to-micro.
+- ✅ **Radar de Fiabilité** : Évaluation spider chart de la performance des services.
+- ✅ **Gantt des Congés** : Timeline interactive des absences planifiées.
+- ✅ **Tendance avec Confiance** : Suivi des retards avec intervalle de confiance statistique.
+
+### Connecteurs BI Externes 🔗
+- ✅ **Live API pour PowerBI/Tableau** : Endpoints JSON dédiés protégés par BI-Key.
+- ✅ **Google Looker Studio** : Intégration via CSV live (`=IMPORTDATA`).
+- ✅ **Vues Dénormalisées** : Modèles de données plats pour outils de reporting tiers.
+
+### Système de Notifications 🔔
 - ✅ Congé approuvé/refusé → email à l'employé (template HTML premium)
 - ✅ Document traité/rejeté → email à l'employé avec lien de téléchargement
 - ✅ Configuration SMTP Gmail via `.env`
@@ -248,27 +285,22 @@ Backend (Node.js):
 ├── bcryptjs 3.0.3        — Hachage mots de passe
 ├── cors 2.8.6            — Cross-Origin Resource Sharing
 ├── dotenv 17.3.1         — Variables d'environnement
-├── multer 2.1.1          — Upload de fichiers
+├── simple-statistics 7.8.9 — Moteur mathématique pour IA (NEW)
+├── json2csv 6.0.0-alpha   — Export vers outils BI (NEW)
 ├── nodemailer 8.0.3      — Emails SMTP
 ├── node-zklib 1.3.0      — Pointeuses ZKTeco
-├── xlsx 0.18.5           — Import/Export Excel
-└── nodemon               — Hot-reload développement
+├── xlsx 0.18.5           — Moteur Excel complexe
+└── node-cron 4.2.1        — Tâches ETL planifiées
 
 Frontend (React):
 ├── react 19.2.4          — Framework UI
-├── react-dom 19.2.4      — Rendu DOM
 ├── react-router-dom 7.13.1 — Routing SPA
 ├── axios 1.13.5          — Client HTTP
-├── chart.js 4.5.1        — Graphiques
-├── react-chartjs-2 5.3.1 — Wrapper Chart.js
-├── jspdf 2.5.1            — Génération PDF
-├── jspdf-autotable 3.8.2  — Tableaux PDF documentés
-├── web-push 3.6.6         — Notifications Push Navigateur [NEW]
-├── node-cron 3.0.3        — Tâches planifiées (Rappels) [NEW]
-├── bootstrap 5.3.8       — CSS complémentaire
-├── @fullcalendar/react 6.1.20  — Calendrier
-├── @fullcalendar/daygrid 6.1.20 — Vue grille
-└── react-scripts 5.0.1   — Tooling CRA
+├── apexcharts 4.x         — Graphiques avancés (NEW)
+├── react-apexcharts 1.7.0 — Wrapper Apex (NEW)
+├── chart.js 4.5.1        — Graphiques standards
+├── jspdf / autotable     — Génération fiches de paie PDF
+└── bootstrap 5.3.8       — Grid & Utilities
 
 Base de Données:
 └── MongoDB Atlas (Cloud) — Via Mongoose ODM
@@ -430,7 +462,37 @@ Application RH **complète et entièrement fonctionnelle** couvrant l'ensemble d
 
 ---
 
+## 🔧 Scripts de Maintenance & Tests
+
+| Script | Fichier | But | Status |
+|--------|---------|-----|--------|
+| Migration champs | `migrate_employe_fields.js` | Ajouter sexe/date_naissance à employés existants | ✅ Exécuté (40 employés) |
+| Reset Admin | `reset_admin_password.js` | Réinitialiser le mot de passe admin@rh.app | ✅ Créé |
+| Test ETL complet | `test_etl_olap.js` | Vérifier flow : login → ETL trigger → DW → OLAP | ✅ Créé |
+| Vérification OLAP | `verify_olap_fix.js` | Valider zéro N/A dans les dimensions | ✅ Exécuté avec succès ! |
+
+## ✅ Corrections Appliquées (04/06/2026)
+
+### Problème OLAP Résolu
+- **Avant** : Cube OLAP affichait "N/A" pour Genre, Tranche d'Âge, Ancienneté
+- **Cause** : Champ `sexe` manquant, `date_naissance` non populé → ETL calculait des valeurs par défaut
+- **Solution** :
+  1. Ajout champ `sexe` au modèle Employe
+  2. Migration de 40 employés existants (sexe='H' par défaut, date_naissance calculée)
+  3. Mise à jour ETL pour lire real data au lieu de déduplique
+  4. Frontend utilise maintenant sexe en création/modification d'employé
+
+### Résultats Vérifiés
+```
+✅ 40/40 employés avec genre rempli (M, F)
+✅ 40/40 employés avec tranche d'âge valide (20-30, 30-40, 40-50, 50+)
+✅ 40/40 employés avec ancienneté valide (0-8 ans)
+✅ ZÉRO valeurs N/A détectées
+```
+
+---
+
 Créé le : 19 Février 2026  
-Mis à jour le : 03 Avril 2026  
-Version : 2.3.0 (Notifications Push & Cron incl.)
-Statut : ✅ Complète et Fonctionnelle  
+Mis à jour le : 08 Avril 2026  
+Version : 4.0.0 (IA, Advanced Dataviz & BI Connector ✅)
+Statut : ✅ Production Ready — Système RH Analytique Complet  

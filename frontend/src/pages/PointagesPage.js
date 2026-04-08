@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import apiClient from '../services/api';
 import pdfService from '../services/pdfService';
+import ImportPointagesModal from '../components/ImportPointagesModal';
 import '../styles/Dashboard.css';
 
 const PointagesPage = () => {
@@ -14,6 +15,7 @@ const PointagesPage = () => {
   const [uaps, setUaps] = useState([]);
   const [selectedService, setSelectedService] = useState('');
   const [selectedUap, setSelectedUap] = useState('');
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const loadStructures = useCallback(async () => {
     try {
@@ -105,8 +107,8 @@ const PointagesPage = () => {
       </div>
 
       {/* Filters Toolbar */}
-      <div className="section-card" style={{ marginBottom: 20, padding: '16px 20px' }}>
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="section-card" style={{ marginBottom: 20, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 15 }}>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
           <div className="form-group" style={{ margin: 0, minWidth: 200 }}>
             <label style={{ fontSize: 12 }}>Rechercher un employé</label>
             <input 
@@ -140,6 +142,25 @@ const PointagesPage = () => {
             </select>
           </div>
         </div>
+        <button 
+          onClick={() => setIsImportModalOpen(true)}
+          style={{
+            padding: '10px 16px',
+            background: 'var(--primary)',
+            color: 'white',
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 500,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            whiteSpace: 'nowrap'
+          }}
+        >
+          📥 Importer Pointages
+        </button>
       </div>
 
       {/* Tabs */}
@@ -203,6 +224,13 @@ const PointagesPage = () => {
           </table>
         </div>
       </div>
+
+      {/* Import Modal */}
+      <ImportPointagesModal 
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => loadData()}
+      />
     </div>
   );
 };

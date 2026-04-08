@@ -54,10 +54,17 @@ const generateEmployee = (role, sexe, serviceId, uapId, matricule) => {
   if (role === 'chef_service') prixHeure = randomInt(550, 750);
   if (role === 'admin') prixHeure = randomInt(700, 900);
 
+  const date_embauche = new Date(randomInt(2018, 2023), randomInt(0, 11), randomInt(1, 28));
+  // Générer date_naissance : supposer au moins 20 ans à l'embauche, max 65 ans
+  const ageAtHire = randomInt(20, 50);
+  const birthYear = date_embauche.getFullYear() - ageAtHire;
+  const date_naissance = new Date(birthYear, randomInt(0, 11), randomInt(1, 28));
+
   return {
     nom, prenom, matricule, email, telephone: `06${randomInt(10000000, 99999999)}`,
     service: serviceId, uap: uapId,
-    date_embauche: new Date(randomInt(2018, 2023), randomInt(0, 11), randomInt(1, 28)),
+    date_embauche,
+    date_naissance,
     prix_heure: prixHeure, role, password: 'Password123!',
     solde_conge_total: role === 'chef_service' || role === 'admin' ? 25 : 22,
     sexe,

@@ -18,6 +18,10 @@ const NAV_CONFIG = {
       section: 'Vues Opérationnelles',
       items: [
         { path: '/dashboard', icon: '📊', label: 'Dashboard RH' },
+        { path: '/analytics', icon: '📈', label: 'Analytique BI' },
+        { path: '/predictive', icon: '🔮', label: 'IA & Prévisions' },
+        { path: '/olap', icon: '🎛️', label: 'Cube OLAP' },
+        { path: '/dataviz', icon: '🧩', label: 'Dataviz Avancée' },
         { path: '/time-discipline', icon: '⏱️', label: 'Temps & Discipline' },
         { path: '/salary-analytics', icon: '💰', label: 'Analyse Salaires' },
       ]
@@ -51,6 +55,10 @@ const NAV_CONFIG = {
     {
       section: 'Analytiques',
       items: [
+        { path: '/analytics', icon: '📈', label: 'Analytique 📊' },
+        { path: '/predictive', icon: '🔮', label: 'IA & Prévisions' },
+        { path: '/olap', icon: '🎛️', label: 'Cube OLAP' },
+        { path: '/dataviz', icon: '🧩', label: 'Dataviz Avancée' },
         { path: '/time-discipline', icon: '⏱️', label: 'Temps & Discipline' },
         { path: '/salary-analytics', icon: '💰', label: 'Analyse Salaires' },
       ]

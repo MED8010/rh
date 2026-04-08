@@ -20,6 +20,9 @@ const documentRoutes = require('./backend/routes/documentRoutes');
 const documentTypeRoutes = require('./backend/routes/documentTypeRoutes');
 const systemRoutes = require('./backend/routes/systemRoutes');
 const primeRoutes = require('./backend/routes/primeRoutes');
+const biRoutes = require('./backend/routes/biRoutes');
+const mlRoutes = require('./backend/routes/mlRoutes');
+const importRoutes = require('./backend/routes/importRoutes');
 const documentTypeController = require('./backend/controllers/documentTypeController');
 const { initSync } = require('./backend/services/zkService');
 const { initCronTasks } = require('./backend/services/cronService');
@@ -54,6 +57,13 @@ const startServer = async () => {
     app.use('/api/document-types', documentTypeRoutes);
     app.use('/api/system', systemRoutes);
     app.use('/api/primes', primeRoutes);
+    app.use('/api/bi', biRoutes);
+    app.use('/api/ml', mlRoutes);
+    app.use('/api/import', importRoutes);
+    app.use('/api/olap', require('./backend/routes/olapRoutes'));
+    app.use('/api/dataviz', require('./backend/routes/datavizRoutes'));
+    app.use('/api/bi-export', require('./backend/routes/biExportRoutes'));
+
 
     // Route de test
     app.get('/api/health', (req, res) => {

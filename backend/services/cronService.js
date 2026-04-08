@@ -4,6 +4,7 @@ const DocumentRequest = require('../models/DocumentRequest');
 const Notification = require('../models/Notification');
 const Employe = require('../models/Employe');
 const Pointage = require('../models/Pointage');
+const etlService = require('./etlService');
 
 /**
  * Service de tâches planifiées (Cron)
@@ -67,7 +68,18 @@ const initCronTasks = () => {
     // (Simplifié pour l'exemple)
   });
 
-  console.log('✅ Services Cron initialisés (Rappels & Automatisations)');
+  // 4. Tous les jours à 02:00 : Entrepôt de données (BI ETL)
+  cron.schedule('0 2 * * *', async () => {
+    try {
+      console.log('[CRON] Synchronisation de l\'entrepôt de données (BI ETL)...');
+      await etlService.runFullETL();
+      console.log('✅ Synchronisation BI terminée');
+    } catch (err) {
+      console.error('❌ Échec de la synchronisation BI:', err);
+    }
+  });
+
+  console.log('✅ Services Cron initialisés (Rappels, Automatisations & BI)');
 };
 
 module.exports = { initCronTasks };
