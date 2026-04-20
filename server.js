@@ -79,7 +79,7 @@ const startServer = async () => {
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, async () => {
       console.log(`✓ Serveur démarré sur le port ${PORT}`);
-      
+
       // Auto-création des comptes de test si absents
       try {
         const User = require('./backend/models/User');
