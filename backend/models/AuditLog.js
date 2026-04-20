@@ -4,11 +4,11 @@ const auditLogSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false // Optionnel (pour les actions système ou pings de santé)
   },
   action: {
     type: String,
-    enum: ['create', 'update', 'delete', 'view', 'download', 'approve', 'reject', 'calculate', 'validate'],
+    enum: ['create', 'update', 'delete', 'view', 'download', 'approve', 'reject', 'calculate', 'validate', 'import', 'export'],
     required: true
   },
   module: {

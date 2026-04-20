@@ -454,6 +454,8 @@ const exportEmployes = async (req, res) => {
       'Matricule': emp.matricule,
       'Nom': emp.nom,
       'Prénom': emp.prenom,
+      'Genre': emp.sexe === 'H' ? 'Homme' : emp.sexe === 'F' ? 'Femme' : 'Inconnu',
+      'Date de Naissance': emp.date_naissance ? new Date(emp.date_naissance).toLocaleDateString('fr-FR') : '',
       'Email': emp.email || '',
       'Téléphone': emp.telephone || '',
       'Service': emp.service ? emp.service.nom_service : '',
@@ -461,7 +463,7 @@ const exportEmployes = async (req, res) => {
       'Statut': emp.statut,
       'Prix/Heure (DT)': emp.prix_heure,
       'Solde Congé Restant': emp.solde_conge_restant,
-      'Date Embauche': emp.date_embauche ? new Date(emp.date_embauche).toLocaleDateString() : '',
+      'Date Embauche': emp.date_embauche ? new Date(emp.date_embauche).toLocaleDateString('fr-FR') : '',
       'Adresse': emp.adresse || ''
     }));
 
@@ -491,7 +493,7 @@ const importEmployes = async (req, res) => {
     const workbook = XLSX.readFile(req.file.path);
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const rawData = XLSX.utils.sheet_to_json(sheet);
+    const rawData = XLSX.utils.sheet_to_json(sheet, { defval: null });
 
     // Charger services et UAPs pour mise en correspondance
     const [services, uaps] = await Promise.all([
@@ -502,44 +504,106 @@ const importEmployes = async (req, res) => {
     const results = {
       created: 0,
       updated: 0,
-      errors: []
+      errors: [],
+      skipped: 0
     };
 
-    for (const row of rawData) {
+    // Helper pour chercher une valeur par plusieurs noms de colonnes possibles
+    const getVal = (row, columnNames) => {
+      for (const name of columnNames) {
+        const key = Object.keys(row).find(k => k.toLowerCase().trim() === name.toLowerCase().trim());
+        if (key && row[key] !== null && row[key] !== undefined && row[key] !== '') {
+          return row[key];
+        }
+      }
+      return null;
+    };
+
+    console.log(`🚀 Début import Excel: ${rawData.length} lignes trouvées dans la feuille "${sheetName}"`);
+
+    for (let i = 0; i < rawData.length; i++) {
+      const row = rawData[i];
       try {
-        const matricule = row['Matricule'];
-        if (!matricule) continue;
-
-        const nom = row['Nom'] || '';
-        const prenom = row['Prénom'] || '';
-        const email = row['Email'] || '';
-        const serviceName = row['Service'];
-        const uapName = row['UAP'];
-        const prixHeure = parseFloat(row['Prix/Heure (DT)'] || 0);
-
-        // Trouver les IDs pour service et UAP
-        const service = services.find(s => s.nom_service.toLowerCase() === (serviceName || '').toLowerCase());
-        const uap = uaps.find(u => u.nom_uap.toLowerCase() === (uapName || '').toLowerCase());
-
-        if (!service || !uap) {
-          results.errors.push(`Matricule ${matricule}: Service ou UAP introuvable (${serviceName}, ${uapName})`);
+        const matricule = getVal(row, ['Matricule', 'MAT', 'ID', 'Code', 'matricule']);
+        if (!matricule) {
+          console.warn(`⚠️ Ligne ${i + 2}: Matricule manquant, ligne sautée.`);
+          results.skipped++;
           continue;
         }
+
+        const nom = getVal(row, ['Nom', 'NAME', 'LAST NAME', 'nom']) || '';
+        const prenom = getVal(row, ['Prénom', 'Prenom', 'FIRST NAME', 'prenom']) || '';
+        const email = getVal(row, ['Email', 'E-mail', 'email']) || '';
+        const serviceName = getVal(row, ['Service', 'DEPARTEMENT', 'Dept', 'service']);
+        const uapName = getVal(row, ['UAP', 'UNIT', 'Unit', 'uap']);
+        
+        let prixHeureRaw = getVal(row, ['Prix/Heure', 'Prix/Heure (DT)', 'Prix Heure', 'Taux', 'prix_heure']);
+        if (typeof prixHeureRaw === 'string') {
+          prixHeureRaw = prixHeureRaw.replace(',', '.');
+        }
+        const prixHeure = parseFloat(prixHeureRaw || 0);
+
+        // Trouver les IDs pour service et UAP
+        const service = services.find(s => s.nom_service.toLowerCase().trim() === (serviceName || '').toString().toLowerCase().trim());
+        const uap = uaps.find(u => u.nom_uap.toLowerCase().trim() === (uapName || '').toString().toLowerCase().trim());
+
+        if (!service || !uap) {
+          results.errors.push(`Ligne ${i + 2} (Matricule ${matricule}): Structure introuvable (Service: ${serviceName || 'N/A'}, UAP: ${uapName || 'N/A'})`);
+          continue;
+        }
+
+        // Normalisation du Genre (Sexe)
+        let sexeRaw = getVal(row, ['Genre', 'Sexe', 'Gender', 'sexe']) || 'H';
+        let sexe = 'H';
+        if (sexeRaw) {
+          const s = sexeRaw.toString().toUpperCase().trim();
+          if (['F', 'FEMME', 'FEMININ', 'FEMALE'].includes(s)) sexe = 'F';
+          else if (['M', 'H', 'HOMME', 'MASCULIN', 'MALE'].includes(s)) sexe = 'H';
+        }
+
+        // Gestion de la Date de Naissance
+        let dateNaissance = null;
+        const dnRaw = getVal(row, ['Date de Naissance', 'Date Naissance', 'Naissance', 'Birthdate', 'DOB']);
+        if (dnRaw) {
+          if (typeof dnRaw === 'number') {
+            dateNaissance = new Date((dnRaw - 25569) * 86400 * 1000);
+          } else {
+            dateNaissance = new Date(dnRaw);
+          }
+        }
+
+        // Gestion de la Date d'Embauche
+        let dateEmbauche = new Date();
+        const deRaw = getVal(row, ['Date Embauche', 'Date Emba', 'Embauche', 'Hire Date', 'date_embauche']);
+        if (deRaw) {
+          if (typeof deRaw === 'number') {
+            dateEmbauche = new Date((deRaw - 25569) * 86400 * 1000);
+          } else {
+            dateEmbauche = new Date(deRaw);
+          }
+        }
+
+        // Normalisation du Statut (Gérer CDI, CIVP... -> actif)
+        let statutRaw = getVal(row, ['Statut', 'Status', 'statut']) || 'actif';
+        const validStatus = ['actif', 'inactif', 'conge', 'suspendu'];
+        let statut = validStatus.includes(statutRaw.toLowerCase()) ? statutRaw.toLowerCase() : 'actif';
 
         const employeData = {
           nom,
           prenom,
           email,
-          telephone: row['Téléphone'] || '',
-          adresse: row['Adresse'] || '',
+          telephone: getVal(row, ['Téléphone', 'Telephone', 'Tél', 'Phone']) || '',
+          adresse: getVal(row, ['Adresse', 'Address', 'adresse']) || '',
           prix_heure: prixHeure,
           service: service._id,
           uap: uap._id,
-          statut: row['Statut'] || 'actif',
-          date_embauche: row['Date Embauche'] ? new Date(row['Date Embauche']) : new Date()
+          statut,
+          sexe,
+          date_naissance: dateNaissance,
+          date_embauche: dateEmbauche
         };
 
-        let employe = await Employe.findOne({ matricule });
+        let employe = await Employe.findOne({ matricule: matricule.toString() });
 
         if (employe) {
           Object.assign(employe, employeData);
@@ -548,21 +612,23 @@ const importEmployes = async (req, res) => {
           results.updated++;
         } else {
           employe = new Employe({
-            matricule,
+            matricule: matricule.toString(),
             ...employeData,
-            solde_conge_total: parseFloat(row['Solde Congé Total'] || 22),
-            solde_conge_restant: parseFloat(row['Solde Congé Restant'] || row['Solde Congé Total'] || 22)
+            solde_conge_total: parseFloat(getVal(row, ['Solde Congé Total', 'Solde Total', 'Solde Congé']) || 22),
+            solde_conge_restant: parseFloat(getVal(row, ['Solde Congé Restant', 'Solde Restant', 'Solde Congé']) || 22)
           });
           await employe.save();
           results.created++;
         }
       } catch (err) {
-        results.errors.push(`Erreur ligne ${rawData.indexOf(row) + 2}: ${err.message}`);
+        results.errors.push(`Erreur ligne ${i + 2}: ${err.message}`);
       }
     }
 
     // Supprimer le fichier temporaire
     fs.unlinkSync(req.file.path);
+
+    console.log(`🏁 Fin import: ${results.created} créés, ${results.updated} mis à jour, ${results.errors.length} erreurs`);
 
     res.json({
       message: 'Importation terminée',

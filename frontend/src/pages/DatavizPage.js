@@ -50,18 +50,18 @@ const DatavizPage = () => {
             </div>
 
             {/* Bandes d'intégration BI */}
-            <div className="section-card" style={{ marginBottom: 30, background: 'var(--bg-light)', borderLeft: '4px solid #3b82f6' }}>
+            <div className="section-card" style={{ marginBottom: 30, borderLeft: '4px solid var(--primary)', background: 'var(--bg-hover)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
-                        <h3 style={{ margin: '0 0 8px 0', fontSize: 15, color: 'var(--text-color)' }}>🔄 Outils BI (PowerBI, Tableau, Google Looker Studio)</h3>
+                        <h3 style={{ margin: '0 0 8px 0', fontSize: 15, color: 'var(--text-primary)' }}>🔄 Outils BI (PowerBI, Tableau, Google Looker Studio)</h3>
                         <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
                             Connectez vos outils externes directement sur le DataWarehouse RH.  
                             Utilisez le header <code>x-api-key: HR_SECURE_BI_KEY_2026</code> pour accéder aux endpoints JSON via PowerBI.
                         </p>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                        <p style={{ margin: '0 0 5px 0', fontSize: 11, fontWeight: 'bold' }}>Lien Google Sheets / Looker (Live CSV) :</p>
-                        <code style={{ background: '#e2e8f0', padding: '6px 12px', borderRadius: '4px', fontSize: 11, color: '#333' }}>
+                        <p style={{ margin: '0 0 5px 0', fontSize: 11, fontWeight: 'bold', color: 'var(--text-primary)' }}>Lien Google Sheets / Looker (Live CSV) :</p>
+                        <code style={{ background: 'var(--border)', padding: '6px 12px', borderRadius: '4px', fontSize: 11, color: 'var(--primary)', display: 'inline-block' }}>
                             =IMPORTDATA("http://localhost:5000/api/bi-export/csv/attendance?apiKey=HR_SECURE_BI_KEY_2026")
                         </code>
                     </div>

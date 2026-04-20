@@ -109,6 +109,30 @@ const ConfigurationPage = () => {
     }
   };
 
+  const handleServiceDelete = async (id) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce service ?')) {
+      try {
+        await apiClient.delete(`/structure/services/${id}`);
+        showSuccess('Service supprimé');
+        loadData();
+      } catch (error) {
+        setError('Erreur lors de la suppression du service');
+      }
+    }
+  };
+
+  const handleUapDelete = async (id) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette UAP ?')) {
+      try {
+        await apiClient.delete(`/structure/uaps/${id}`);
+        showSuccess('UAP supprimée');
+        loadData();
+      } catch (error) {
+        setError('Erreur lors de la suppression de l\'UAP');
+      }
+    }
+  };
+
   if (loading) return <div className="loading"><div className="spinner"></div>Chargement de la configuration...</div>;
 
   return (
@@ -149,7 +173,7 @@ const ConfigurationPage = () => {
                       <td>
                         <div className="action-buttons">
                           <button className="btn-edit" onClick={() => { setServiceData({nom_service:s.nom_service, description:s.description||''}); setEditingServiceId(s._id); setShowServiceModal(true); }}>✏️</button>
-                          <button className="btn-delete" onClick={() => {/* Delete logic */}}>🗑️</button>
+                          <button className="btn-delete" onClick={() => handleServiceDelete(s._id)}>🗑️</button>
                         </div>
                       </td>
                     </tr>
@@ -176,7 +200,7 @@ const ConfigurationPage = () => {
                       <td>
                         <div className="action-buttons">
                           <button className="btn-edit" onClick={() => { setUapData({nom_uap:u.nom_uap, description:u.description||''}); setEditingUapId(u._id); setShowUapModal(true); }}>✏️</button>
-                          <button className="btn-delete" onClick={() => {/* Delete logic */}}>🗑️</button>
+                          <button className="btn-delete" onClick={() => handleUapDelete(u._id)}>🗑️</button>
                         </div>
                       </td>
                     </tr>

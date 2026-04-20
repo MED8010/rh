@@ -7,6 +7,7 @@ const apiKeyAuth = require('../middleware/apiKeyAuth');
 
 // Export JSON plat pour PowerBI ou Tableau
 router.get('/json/salary-trends', apiKeyAuth, biExportController.exportSalaryTrendsJSON);
+router.get('/json/attendance', apiKeyAuth, biExportController.exportAttendanceJSON);
 
 // Export CSV Live pour Looker Studio / Excel
 router.get('/csv/attendance', apiKeyAuth, biExportController.exportAttendanceCSV);

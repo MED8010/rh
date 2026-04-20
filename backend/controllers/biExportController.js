@@ -69,3 +69,30 @@ exports.exportAttendanceCSV = async (req, res) => {
         res.status(500).json({ error: "Erreur lors de l'export CSV", msg: error.message });
     }
 };
+
+exports.exportAttendanceJSON = async (req, res) => {
+    try {
+        // Obtenir les pointages sous forme JSON (PowerBI / Tableau)
+        const data = await DW_FactAttendance.aggregate([
+            { $lookup: { from: 'dw_dimemployes', localField: 'employe_key', foreignField: '_id', as: 'emp' } },
+            { $unwind: '$emp' },
+            { $project: {
+                _id: 0,
+                Date: "$date_key",
+                Matricule: "$emp.matricule",
+                Prenom: "$emp.prenom",
+                Nom: "$emp.nom",
+                Service: "$emp.service_nom",
+                Genre: "$emp.genre",
+                MinutesRetard: "$late_minutes",
+                MinutesHeuresSup: "$overtime_minutes",
+                EstAbsent: { $cond: ["$is_absent", "Oui", "Non"] },
+                ScoreProductivite: "$productivity_score"
+            }}
+        ]);
+
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: "Erreur lors de l'export JSON attendance", msg: error.message });
+    }
+};

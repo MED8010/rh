@@ -26,29 +26,62 @@ const auditMiddleware = async (req, res, next) => {
       }
 
       // Déterminer l'action effectuée
-      let action = 'view'; // Par défaut
-      if (req.method === 'POST') action = 'create';
-      else if (req.method === 'PUT' || req.method === 'PATCH') action = 'update';
-      else if (req.method === 'DELETE') action = 'delete';
-      else if (req.method === 'GET') action = 'view';
-
-      // Déterminer le module (en fonction du chemin)
+      // Déterminer l'action effectuée
       const pathParts = req.path.split('/');
-      const module = pathParts[2] || 'unknown'; // /api/{module}/...
+      const moduleName = pathParts[2] || 'system';
+      const resourceType = pathParts[3] || null;
+      let action = 'view';
+      let description = `${req.method} ${req.path}`;
 
-      // Enregistrer dans la base de données
-      const auditLog = new AuditLog({
-        user: req.user?.id || null, // Peut être null si utilisateur non authentifié
+      // Logique de détection intelligente
+      if (moduleName === 'import') {
+        action = 'import';
+        description = `Importation de données (${resourceType || 'Excel'})`;
+      } else if (moduleName === 'bi-export' || req.path.includes('export')) {
+        action = 'export';
+        description = `Exportation BI (${resourceType || 'Données'})`;
+      } else if (req.path.includes('download') || req.path.includes('template')) {
+        action = 'download';
+        description = `Téléchargement de fichier / template`;
+      } else if (req.method === 'POST') {
+        action = 'create';
+        description = `Création dans le module ${moduleName}`;
+      } else if (req.method === 'PUT' || req.method === 'PATCH') {
+        action = 'update';
+        description = `Mise à jour dans le module ${moduleName}`;
+      } else if (req.method === 'DELETE') {
+        action = 'delete';
+        description = `Suppression dans le module ${moduleName}`;
+      } else if (req.method === 'GET') {
+        action = 'view';
+        description = `Consultation ${moduleName}`;
+      }
+
+      // Cas particuliers pour l'authentification M2M (Clé API)
+      if (req.apiKey && !req.user) {
+        description += ` (Via Clé API)`;
+      }
+
+      // Préparer les données pour le log d'audit
+      const auditLogData = {
         action,
-        module,
-        resource_type: pathParts[3] || null,
+        module: moduleName,
+        resource_type: resourceType,
         resource_id: pathParts[4] || null,
-        description: `${req.method} ${req.path}`,
+        description,
         ip_address: req.ip || req.connection.remoteAddress,
         user_agent: req.get('user-agent'),
         date_action: new Date(),
         status: statusCode >= 400 ? 'failure' : 'success'
-      });
+      };
+
+      // N'ajouter l'utilisateur que s'il est présent (évite les erreurs de validation avec null)
+      if (req.user && (req.user.id || req.user._id)) {
+        auditLogData.user = req.user.id || req.user._id;
+      }
+
+      // Enregistrer dans la base de données
+      const auditLog = new AuditLog(auditLogData);
 
       await auditLog.save().catch(err => {
         console.error('Erreur lors de la sauvegarde du log d\'audit:', err);

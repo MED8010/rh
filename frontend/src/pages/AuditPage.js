@@ -3,11 +3,17 @@ import apiClient from '../services/api';
 import '../styles/Dashboard.css';
 
 const ACTION_BADGE = {
-  CREATE: <span className="badge badge-success">➕ Créer</span>,
-  UPDATE: <span className="badge badge-info">✏️ Modifier</span>,
-  DELETE: <span className="badge badge-danger">🗑️ Supprimer</span>,
-  LOGIN: <span className="badge badge-primary">🔐 Connexion</span>,
-  LOGOUT: <span className="badge badge-neutral">🚪 Déconnexion</span>,
+  create: <span className="badge badge-success">➕ Créer</span>,
+  update: <span className="badge badge-info">✏️ Modifier</span>,
+  delete: <span className="badge badge-danger">🗑️ Supprimer</span>,
+  import: <span className="badge badge-warning">📥 Import</span>,
+  export: <span className="badge badge-primary">📤 Export</span>,
+  download: <span className="badge badge-info">⬇️ Télécharger</span>,
+  approve: <span className="badge badge-success">✅ Approuver</span>,
+  reject: <span className="badge badge-danger">❌ Rejeter</span>,
+  calculate: <span className="badge badge-primary">🔢 Calculer</span>,
+  validate: <span className="badge badge-success">✔️ Valider</span>,
+  view: <span className="badge badge-neutral">👁️ Voir</span>,
 };
 
 const AuditPage = () => {

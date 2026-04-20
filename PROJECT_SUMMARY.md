@@ -42,7 +42,7 @@
 - ✅ **salaireController.js** — Calcul automatique, validation, analytics
 - ✅ **primeController.js** — Gestion des types et attribution des primes employé
 - ✅ **structureController.js** — Gestion services & UAPs
-- ✅ **auditController.js** — Journal d'audit et statistiques
+- ✅ **auditController.js** — Journal d'audit complet avec détection intelligente des actions (Imports/Exports)
 - ✅ **notificationController.js** — CRUD notifications, marquage lu/non-lu
 - ✅ **documentController.js** — Demandes de documents + email notification
 - ✅ **documentTypeController.js** — Types de documents dynamiques
@@ -60,7 +60,7 @@
 - ✅ **mlRoutes.js** — IA & Prédictions (NEW)
 - ✅ **datavizRoutes.js** — Visualisations avancées (NEW)
 - ✅ **olapRoutes.js** — Cube BI (NEW)
-- ✅ **biExportRoutes.js** — Connecteurs externes (NEW)
+- ✅ **biExportRoutes.js** — Connecteurs BI (JSON Salary, JSON Attendance NEW, CSV Live)
 - ✅ **biRoutes.js** — ETL & Trigger (NEW)
 - ✅ **structureRoutes.js** — Services & UAPs
 - ✅ **auditRoutes.js** — Traçabilité
@@ -162,7 +162,7 @@
 - ✅ Hachage des mots de passe (bcrypt, 10 rounds)
 - ✅ RBAC — 4 niveaux de rôles
 - ✅ Routes protégées côté client ET serveur
-- ✅ Journalisation automatique de toutes les actions (audit)
+- ✅ Journalisation automatique avancée (audit) — Traçabilité des imports/exports BI
 
 ### Gestion des Employés
 - ✅ CRUD complet avec validation (sexe, date_naissance obligatoires pour BI)
@@ -240,9 +240,10 @@
 - ✅ **Tendance avec Confiance** : Suivi des retards avec intervalle de confiance statistique.
 
 ### Connecteurs BI Externes 🔗
-- ✅ **Live API pour PowerBI/Tableau** : Endpoints JSON dédiés protégés par BI-Key.
+- ✅ **Live API pour PowerBI/Tableau** : Endpoints JSON dédiés (Salaires + Présences) protégés par BI-Key.
 - ✅ **Google Looker Studio** : Intégration via CSV live (`=IMPORTDATA`).
 - ✅ **Vues Dénormalisées** : Modèles de données plats pour outils de reporting tiers.
+- ✅ **Audit de Flux** : Chaque connexion BI externe est tracée dans le journal système.
 
 ### Système de Notifications 🔔
 - ✅ Congé approuvé/refusé → email à l'employé (template HTML premium)
@@ -493,6 +494,6 @@ Application RH **complète et entièrement fonctionnelle** couvrant l'ensemble d
 ---
 
 Créé le : 19 Février 2026  
-Mis à jour le : 08 Avril 2026  
-Version : 4.0.0 (IA, Advanced Dataviz & BI Connector ✅)
+Mis à jour le : 09 Avril 2026  
+Version : 4.1.0 (Enhanced Traçabilité & BI Attendance ✅)
 Statut : ✅ Production Ready — Système RH Analytique Complet  
