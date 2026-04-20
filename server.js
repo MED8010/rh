@@ -77,8 +77,28 @@ const startServer = async () => {
 
     // Écouter sur le port
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
+    app.listen(PORT, async () => {
       console.log(`✓ Serveur démarré sur le port ${PORT}`);
+      
+      // Auto-création du Super Admin si absent (pour faciliter le déploiement initial)
+      try {
+        const User = require('./backend/models/User');
+        const adminExists = await User.findOne({ role: 'super_admin' });
+        if (!adminExists) {
+          console.log('⚡ Initialisation du compte Super Admin...');
+          const adminPassword = process.env.ADMIN_PASSWORD || 'SuperAdmin123!';
+          const superAdmin = new User({
+            email: 'superadmin@rh.app',
+            password: adminPassword,
+            role: 'super_admin'
+          });
+          await superAdmin.save();
+          console.log('✅ Compte Super Admin créé : superadmin@rh.app / ' + adminPassword);
+        }
+      } catch (err) {
+        console.error('⚠️ Erreur lors de l\'auto-seed:', err);
+      }
+
       // Initialiser la synchronisation biométrique
       initSync();
       // Initialiser les tâches automatisées (Rappels, etc.)

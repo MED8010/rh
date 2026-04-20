@@ -62,7 +62,7 @@ const DatavizPage = () => {
                     <div style={{ textAlign: 'right' }}>
                         <p style={{ margin: '0 0 5px 0', fontSize: 11, fontWeight: 'bold', color: 'var(--text-primary)' }}>Lien Google Sheets / Looker (Live CSV) :</p>
                         <code style={{ background: 'var(--border)', padding: '6px 12px', borderRadius: '4px', fontSize: 11, color: 'var(--primary)', display: 'inline-block' }}>
-                            =IMPORTDATA("http://localhost:5000/api/bi-export/csv/attendance?apiKey=HR_SECURE_BI_KEY_2026")
+                            =IMPORTDATA("{process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/bi-export/csv/attendance?apiKey=HR_SECURE_BI_KEY_2026")
                         </code>
                     </div>
                 </div>

@@ -73,7 +73,8 @@ const EmployeeDocumentsPage = () => {
   };
 
   const handleDownload = (filename) => {
-    const downloadUrl = `http://localhost:5000/uploads/documents/${filename}`;
+    const baseUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
+    const downloadUrl = `${baseUrl}/uploads/documents/${filename}`;
     window.open(downloadUrl, '_blank');
   };
 
