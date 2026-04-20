@@ -2,7 +2,7 @@ const Conge = require('../models/Conge');
 const Employe = require('../models/Employe');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
-const { sendCongeNotificationEmail } = require('../services/emailService');
+const { sendCongeNotificationEmail, sendAdminNewRequestEmail } = require('../services/emailService');
 const { createNotification, createAndSendNotification } = require('../services/notificationService');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -73,6 +73,11 @@ const requestConge = async (req, res) => {
         `${employeNomComplet} a soumis une demande de congé (${type}) du ${dateDebutFr} au ${dateFinFr} — ${nombre_jours} jour(s).`,
         conge._id
       );
+
+      // ── Envoyer aussi un EMAIL à l'admin ────────────────────────────
+      if (admin.email) {
+        await sendAdminNewRequestEmail(admin.email, employeNomComplet, 'conge', { date_debut, date_fin });
+      }
     }
     console.log(`🔔 ${admins.length} admin(s) notifié(s) de la nouvelle demande de congé`);
 

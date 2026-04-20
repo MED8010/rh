@@ -12,7 +12,7 @@ const createAndSendNotification = async (userId, data) => {
     const notif = new Notification({
       user: userId,
       type: data.type,
-      category: data.category || 'General',
+      category: data.category || 'Systeme',
       titre: data.titre,
       message: data.message,
       reference_id: data.reference_id

@@ -5,7 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const Notification = require('../models/Notification');
 const fs = require('fs');
-const { sendDocumentNotificationEmail } = require('../services/emailService');
+const { sendDocumentNotificationEmail, sendAdminNewRequestEmail } = require('../services/emailService');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const { createNotification } = require('../services/notificationService');
@@ -74,15 +74,20 @@ const createRequest = async (req, res) => {
       const employe = await Employe.findById(employeId);
       const employeNom = employe ? `${employe.prenom} ${employe.nom}` : 'Un employé';
 
-      for (const admin of admins) {
-        await createNotification(
-          admin._id,
-          'document_demande',
-          '📄 Nouvelle demande de document',
-          `${employeNom} a demandé un document (${type_document.replace('_', ' ')}).`,
-          documentRequest._id
-        );
-      }
+        for (const admin of admins) {
+          await createNotification(
+            admin._id,
+            'document_demande',
+            '📄 Nouvelle demande de document',
+            `${employeNom} a demandé un document (${type_document.replace('_', ' ')}).`,
+            documentRequest._id
+          );
+
+          // ── Envoyer aussi un EMAIL à l'admin ────────────────────────────
+          if (admin.email) {
+            await sendAdminNewRequestEmail(admin.email, employeNom, 'document', { type_document });
+          }
+        }
     } catch (notifErr) {
       console.error('Erreur notification admin:', notifErr);
     }

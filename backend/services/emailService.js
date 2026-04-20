@@ -149,12 +149,12 @@ const sendCongeNotificationEmail = async (to, employeNom, statut, conge) => {
  */
 const sendDocumentNotificationEmail = async (to, employeNom, statut, demande) => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.log('⚠️  Email non configuré - notification email ignorée');
     return;
   }
 
   try {
     const transporter = createTransporter();
+    const frontendUrl = process.env.FRONTEND_URL || 'https://rh-omega-rose.vercel.app';
 
     const isProcessed = statut === 'traite';
     const typeLabel = demande.type_document?.replace('_', ' ') || 'Document';
@@ -177,60 +177,23 @@ const sendDocumentNotificationEmail = async (to, employeNom, statut, demande) =>
 </head>
 <body style="margin:0;padding:0;background:#f8fafc;font-family:'Segoe UI',Arial,sans-serif;">
   <div style="max-width:600px;margin:20px auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
-    
-    <!-- Header -->
     <div style="background:${color};padding:30px 20px;text-align:center;color:#ffffff;">
       <div style="font-size:48px;margin-bottom:10px;">${icon}</div>
       <h1 style="margin:0;font-size:20px;font-weight:700;text-transform:uppercase;">${statusText}</h1>
-      <p style="margin:5px 0 0;opacity:0.9;font-size:14px;">Gestion des Documents RH</p>
     </div>
-
-    <!-- Content -->
     <div style="padding:30px 20px;">
       <p style="font-size:16px;color:#1e293b;margin:0 0 15px;">Bonjour <strong>${employeNom}</strong>,</p>
-      
       <p style="font-size:14px;color:#475569;line-height:1.6;margin:0 0 20px;">
         ${isProcessed 
           ? `Nous avons le plaisir de vous informer que votre demande pour le document <strong>"${typeLabel}"</strong> a été complétée.` 
           : `Nous vous informons que votre demande pour le document <strong>"${typeLabel}"</strong> n'a pas pu être satisfaite.`
         }
       </p>
-
-      <div style="background:#f1f5f9;border-radius:8px;padding:20px;margin-bottom:20px;">
-        <h3 style="margin:0 0 10px;font-size:13px;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Résumé de la demande</h3>
-        <table style="width:100%;font-size:14px;color:#1e293b;">
-          <tr>
-            <td style="padding:5px 0;color:#64748b;">Type:</td>
-            <td style="padding:5px 0;font-weight:600;">${typeLabel}</td>
-          </tr>
-          <tr>
-            <td style="padding:5px 0;color:#64748b;">Statut:</td>
-            <td style="padding:5px 0;font-weight:600;color:${color}">${statusText}</td>
-          </tr>
-          ${demande.commentaire_admin ? `
-          <tr>
-            <td style="padding:5px 0;color:#64748b;">Commentaire:</td>
-            <td style="padding:5px 0;font-style:italic;">"${demande.commentaire_admin}"</td>
-          </tr>
-          ` : ''}
-        </table>
-      </div>
-
       ${isProcessed ? `
       <div style="text-align:center;margin:30px 0;">
-        <p style="font-size:13px;color:#64748b;margin-bottom:15px;">Vous pouvez dès à présent télécharger votre document sur votre espace employé.</p>
-        <a href="http://localhost:3000/mes-documents" style="background:${color};color:#ffffff;padding:12px 25px;text-decoration:none;border-radius:6px;font-weight:600;display:inline-block;">Accéder à mes documents</a>
+        <a href="${frontendUrl}/mes-documents" style="background:${color};color:#ffffff;padding:12px 25px;text-decoration:none;border-radius:6px;font-weight:600;display:inline-block;">Accéder à mes documents</a>
       </div>
       ` : ''}
-
-      <p style="font-size:12px;color:#94a3b8;margin-top:20px;border-top:1px solid #f1f5f9;padding-top:10px;">
-        Ceci est un message automatique, merci de ne pas y répondre. Pour toute question, contactez le service RH.
-      </p>
-    </div>
-
-    <!-- Footer -->
-    <div style="background:#f8fafc;padding:15px;text-align:center;font-size:11px;color:#94a3b8;">
-      Système de Gestion RH — MED8010
     </div>
   </div>
 </body>
@@ -242,14 +205,64 @@ const sendDocumentNotificationEmail = async (to, employeNom, statut, demande) =>
       subject,
       html
     });
-
     console.log(`📧 Email envoyé à ${to} (Document: ${statut})`);
   } catch (error) {
     console.error('❌ Erreur envoi email document:', error.message);
   }
 };
 
+/**
+ * Envoyer un email de notification aux administrateurs pour une nouvelle demande
+ * @param {string} to - adresse email de l'admin
+ * @param {string} employeNom - nom de l'employé demandeur
+ * @param {string} typeDemande - 'conge' ou 'document'
+ * @param {object} details - infos supp (type de doc, dates conge, etc)
+ */
+const sendAdminNewRequestEmail = async (to, employeNom, typeDemande, details) => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    return;
+  }
+
+  try {
+    const transporter = createTransporter();
+    const frontendUrl = process.env.FRONTEND_URL || 'https://rh-omega-rose.vercel.app';
+    
+    const isConge = typeDemande === 'conge';
+    const subject = isConge 
+      ? `🔔 Nouvelle demande de congé de ${employeNom}`
+      : `🔔 Nouvelle demande de document de ${employeNom}`;
+
+    const infoLabel = isConge ? 'Dates' : 'Type de document';
+    const infoValue = isConge 
+      ? `Du ${new Date(details.date_debut).toLocaleDateString('fr-FR')} au ${new Date(details.date_fin).toLocaleDateString('fr-FR')}` 
+      : (details.type_document || 'Non spécifié').replace('_', ' ');
+
+    const html = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e1e4e8; border-radius: 8px; padding: 20px;">
+        <h2 style="color: #0366d6;">Une nouvelle demande nécessite votre attention</h2>
+        <p><strong>Employé :</strong> ${employeNom}</p>
+        <p><strong>Type de demande :</strong> ${typeDemande === 'conge' ? 'Congé' : 'Document'}</p>
+        <p><strong>${infoLabel} :</strong> ${infoValue}</p>
+        <div style="margin-top: 30px; text-align: center;">
+          <a href="${frontendUrl}/${isConge ? 'conges' : 'admin-documents'}" style="background-color: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Accéder au tableau de bord</a>
+        </div>
+      </div>
+    `;
+
+    await transporter.sendMail({
+      from: `"Système RH - Alertes" <${process.env.EMAIL_USER}>`,
+      to,
+      subject,
+      html
+    });
+    console.log(`📧 Alerte email envoyée à l'admin ${to}`);
+  } catch (error) {
+    console.error('❌ Erreur envoi email admin:', error.message);
+  }
+};
+
 module.exports = { 
   sendCongeNotificationEmail,
-  sendDocumentNotificationEmail
+  sendDocumentNotificationEmail,
+  sendAdminNewRequestEmail
 };
