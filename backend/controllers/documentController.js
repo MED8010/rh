@@ -8,7 +8,7 @@ const fs = require('fs');
 const { sendDocumentNotificationEmail } = require('../services/emailService');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-const { createAndSendNotification } = require('../services/notificationService');
+const { createNotification } = require('../services/notificationService');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const getAdminUsers = async () => {

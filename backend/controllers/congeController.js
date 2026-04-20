@@ -3,19 +3,14 @@ const Employe = require('../models/Employe');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { sendCongeNotificationEmail } = require('../services/emailService');
+const { createNotification, createAndSendNotification } = require('../services/notificationService');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
  * Crée une notification en base
  */
-const createNotification = async (userId, type, titre, message, referenceId) => {
-  try {
-    await Notification.create({ user: userId, type, titre, message, reference_id: referenceId });
-  } catch (err) {
-    console.error('❌ Erreur création notification:', err.message);
-  }
-};
+
 
 /**
  * Retourne tous les users admin/super_admin

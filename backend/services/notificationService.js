@@ -11,21 +11,31 @@ const createAndSendNotification = async (userId, data) => {
     // 1. Sauvegarde en Base de Données
     const notif = new Notification({
       user: userId,
-      ...data
+      type: data.type,
+      category: data.category || 'General',
+      titre: data.titre,
+      message: data.message,
+      reference_id: data.reference_id
     });
     await notif.save();
 
+    console.log(`📡 Notification sauvegardée pour ${userId}: ${data.titre}`);
+
     // 2. Envoi via Push (Service Worker) si configuré
-    await sendPushNotification(userId, {
-      title: data.titre,
-      body: data.message,
-      data: {
-        url: '/notifications',
-        reference_id: data.reference_id
-      },
-      icon: '/logo192.png', // Chemin vers l'icône par défaut
-      badge: '/badge.png'
-    });
+    try {
+      await sendPushNotification(userId, {
+        title: data.titre,
+        body: data.message,
+        data: {
+          url: '/notifications',
+          reference_id: data.reference_id
+        },
+        icon: '/logo192.png',
+        badge: '/badge.png'
+      });
+    } catch (pushErr) {
+      console.warn('⚠️ Échec de l\'envoi Push:', pushErr.message);
+    }
 
     return notif;
   } catch (error) {
@@ -33,4 +43,19 @@ const createAndSendNotification = async (userId, data) => {
   }
 };
 
-module.exports = { createAndSendNotification };
+/**
+ * Version simplifiée pour les appels directs dans les contrôleurs
+ */
+const createNotification = async (userId, type, titre, message, reference_id) => {
+  return createAndSendNotification(userId, {
+    type,
+    titre,
+    message,
+    reference_id
+  });
+};
+
+module.exports = { 
+  createAndSendNotification,
+  createNotification 
+};
