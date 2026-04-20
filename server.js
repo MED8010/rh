@@ -80,23 +80,24 @@ const startServer = async () => {
     app.listen(PORT, async () => {
       console.log(`✓ Serveur démarré sur le port ${PORT}`);
       
-      // Auto-création du Super Admin si absent (pour faciliter le déploiement initial)
+      // Auto-création des comptes de test si absents
       try {
         const User = require('./backend/models/User');
-        const adminExists = await User.findOne({ role: 'super_admin' });
-        if (!adminExists) {
-          console.log('⚡ Initialisation du compte Super Admin...');
-          const adminPassword = process.env.ADMIN_PASSWORD || 'SuperAdmin123!';
-          const superAdmin = new User({
-            email: 'superadmin@rh.app',
-            password: adminPassword,
-            role: 'super_admin'
-          });
-          await superAdmin.save();
-          console.log('✅ Compte Super Admin créé : superadmin@rh.app / ' + adminPassword);
+        const testAccounts = [
+          { email: 'superadmin@rh.app', password: 'SuperAdmin123!', role: 'super_admin' },
+          { email: 'admin@rh.app', password: 'Password123!', role: 'admin' }
+        ];
+
+        for (const account of testAccounts) {
+          const exists = await User.findOne({ email: account.email.toLowerCase() });
+          if (!exists) {
+            console.log(`⚡ Création du compte ${account.role} : ${account.email}...`);
+            await User.create(account);
+            console.log(`✅ Compte ${account.role} créé avec succès.`);
+          }
         }
       } catch (err) {
-        console.error('⚠️ Erreur lors de l\'auto-seed:', err);
+        console.error('⚠️ Erreur d\'initialisation des comptes:', err);
       }
 
       // Initialiser la synchronisation biométrique
