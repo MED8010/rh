@@ -81,8 +81,8 @@ exports.getGanttConges = async (req, res) => {
     try {
         // On récupère les congés approuvés récents ou futurs
         const conges = await Conge.find({ 
-            statut: 'approuvé', 
-            date_debut: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 1)) }
+            statut: 'approuve', 
+            date_debut: { $gte: new Date(new Date().setMonth(new Date().getMonth() - 6)) }
         }).populate('employe').limit(50);
 
         // Format ApexCharts rangeBar (Gantt)
@@ -91,7 +91,7 @@ exports.getGanttConges = async (req, res) => {
             data: conges.filter(c => c.employe).map(c => ({
                 x: `${c.employe.prenom} ${c.employe.nom}`,
                 y: [new Date(c.date_debut).getTime(), new Date(c.date_fin).getTime()],
-                fillColor: c.type_conge === 'maladie' ? '#ef4444' : '#3b82f6'
+                fillColor: c.type === 'maladie' ? '#ef4444' : '#3b82f6'
             }))
         }];
 

@@ -4,6 +4,7 @@ import datavizService from '../services/datavizService';
 import '../styles/Dashboard.css';
 
 const DatavizPage = () => {
+    const [isDarkMode, setIsDarkMode] = useState(document.body.classList.contains('dark-mode'));
     const [loading, setLoading] = useState(true);
     const [heatmapData, setHeatmapData] = useState([]);
     const [treemapData, setTreemapData] = useState([]);
@@ -12,6 +13,12 @@ const DatavizPage = () => {
     const [trendData, setTrendData] = useState([]);
 
     useEffect(() => {
+        // Détection dynamique du mode sombre
+        const observer = new MutationObserver(() => {
+            setIsDarkMode(document.body.classList.contains('dark-mode'));
+        });
+        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
         const loadAllCharts = async () => {
             setLoading(true);
             try {
@@ -34,6 +41,8 @@ const DatavizPage = () => {
             }
         };
         loadAllCharts();
+
+        return () => observer.disconnect();
     }, []);
 
     if (loading) {
@@ -83,6 +92,7 @@ const DatavizPage = () => {
                             series={heatmapData}
                             options={{
                                 chart: { type: 'heatmap', toolbar: { show: false } },
+                                theme: { mode: isDarkMode ? 'dark' : 'light' },
                                 dataLabels: { enabled: false },
                                 colors: ["#ef4444"],
                                 title: { text: '' },
@@ -105,6 +115,7 @@ const DatavizPage = () => {
                             series={treemapData}
                             options={{
                                 chart: { type: 'treemap', toolbar: { show: true } },
+                                theme: { mode: isDarkMode ? 'dark' : 'light' },
                                 legend: { show: true },
                                 plotOptions: { treemap: { enableShades: true, shadeIntensity: 0.5 } }
                             }}
@@ -128,6 +139,7 @@ const DatavizPage = () => {
                             series={ganttData}
                             options={{
                                 chart: { type: 'rangeBar' },
+                                theme: { mode: isDarkMode ? 'dark' : 'light' },
                                 plotOptions: { bar: { horizontal: true } },
                                 xaxis: { type: 'datetime' },
                                 tooltip: { x: { format: 'dd MMM yyyy' } }
@@ -149,6 +161,7 @@ const DatavizPage = () => {
                             series={radarData.series}
                             options={{
                                 chart: { type: 'radar', dropShadow: { enabled: true, blur: 1, left: 1, top: 1 } },
+                                theme: { mode: isDarkMode ? 'dark' : 'light' },
                                 labels: radarData.labels,
                                 stroke: { width: 2 },
                                 fill: { opacity: 0.1 },
@@ -172,6 +185,7 @@ const DatavizPage = () => {
                         series={trendData}
                         options={{
                             chart: { type: 'line', stacked: false, toolbar: { show: true } },
+                            theme: { mode: isDarkMode ? 'dark' : 'light' },
                             stroke: { width: [3, 0, 0], curve: 'smooth' },
                             plotOptions: { bar: { columnWidth: '50%' } },
                             fill: {

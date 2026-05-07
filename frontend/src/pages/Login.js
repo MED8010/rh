@@ -1,7 +1,25 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/Auth.css';
+
+const PARTICLES = [
+  { size: 4, color: '#818cf8', left: 8,  delay: 0,    duration: 14 },
+  { size: 5, color: '#c084fc', left: 15, delay: 2.5,  duration: 11 },
+  { size: 3, color: '#06b6d4', left: 23, delay: 5,    duration: 16 },
+  { size: 6, color: '#818cf8', left: 31, delay: 1,    duration: 13 },
+  { size: 4, color: '#8b5cf6', left: 38, delay: 7,    duration: 10 },
+  { size: 5, color: '#c084fc', left: 46, delay: 3,    duration: 15 },
+  { size: 3, color: '#06b6d4', left: 53, delay: 9,    duration: 12 },
+  { size: 6, color: '#818cf8', left: 61, delay: 4,    duration: 14 },
+  { size: 4, color: '#8b5cf6', left: 69, delay: 6,    duration: 11 },
+  { size: 5, color: '#c084fc', left: 76, delay: 2,    duration: 16 },
+  { size: 3, color: '#818cf8', left: 83, delay: 8,    duration: 13 },
+  { size: 4, color: '#06b6d4', left: 90, delay: 1,    duration: 10 },
+  { size: 5, color: '#c084fc', left: 95, delay: 5,    duration: 15 },
+  { size: 3, color: '#8b5cf6', left: 12, delay: 11,   duration: 12 },
+  { size: 6, color: '#818cf8', left: 57, delay: 13,   duration: 9  },
+];
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -15,22 +33,14 @@ const Login = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const response = await login(email, password);
       const userRole = response?.user?.role;
-
-      if (userRole === 'super_admin') {
-        navigate('/super-admin');
-      } else if (userRole === 'admin') {
-        navigate('/dashboard');
-      } else if (userRole === 'chef_service') {
-        navigate('/chef-dashboard');
-      } else if (userRole === 'employe') {
-        navigate('/employee-dashboard');
-      } else {
-        navigate('/dashboard');
-      }
+      if (userRole === 'super_admin') navigate('/super-admin');
+      else if (userRole === 'admin') navigate('/dashboard');
+      else if (userRole === 'chef_service') navigate('/chef-dashboard');
+      else if (userRole === 'employe') navigate('/employee-dashboard');
+      else navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Identifiants incorrects. Veuillez réessayer.');
     } finally {
@@ -40,18 +50,71 @@ const Login = () => {
 
   return (
     <div className="auth-container">
-      {/* Branding side */}
+      {/* Particules flottantes */}
+      <div className="auth-particles">
+        {PARTICLES.map((p, i) => (
+          <div
+            key={i}
+            className="particle"
+            style={{
+              width: p.size,
+              height: p.size,
+              background: p.color,
+              left: `${p.left}%`,
+              animationDelay: `${p.delay}s`,
+              animationDuration: `${p.duration}s`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Grille de fond animée */}
+      <div className="auth-grid-overlay" />
+
+      {/* Branding (gauche) */}
       <div className="auth-branding">
-        <div className="auth-logo-mark" style={{ background: 'transparent', boxShadow: 'none' }}>
-          <img src="/lpe-logo.png" alt="LPE Logo" style={{ width: '150px', height: 'auto', dropShadow: '0 4px 12px rgba(0,0,0,0.1)' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-          <span style={{ display: 'none', fontSize: '64px' }}>🏢</span>
+        <div className="auth-logo-wrapper">
+          <div className="auth-logo-ring ring-1" />
+          <div className="auth-logo-ring ring-2" />
+          <div
+            className="auth-logo-mark"
+            style={{ background: 'transparent', boxShadow: 'none', marginBottom: 0, position: 'relative', zIndex: 1 }}
+          >
+            <img
+              src="/lpe-logo.png"
+              alt="LPE Logo"
+              style={{ width: '150px', height: 'auto' }}
+              onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+            />
+            <span style={{ display: 'none', fontSize: '64px' }}>🏢</span>
+          </div>
         </div>
-        <h1>
+
+        <h1 className="branding-title">
           Gestion des <span className="highlight">Ressources</span> Humaines
         </h1>
-        <p>
+        <p className="branding-desc">
           Plateforme complète pour la gestion de vos employés, pointages, congés et salaires — en temps réel.
         </p>
+
+        {/* Statistiques clés */}
+        <div className="auth-stats">
+          <div className="auth-stat-item">
+            <span className="stat-number">4</span>
+            <span className="stat-label">Modules IA</span>
+          </div>
+          <div className="auth-stat-divider" />
+          <div className="auth-stat-item">
+            <span className="stat-number">360°</span>
+            <span className="stat-label">Vue RH</span>
+          </div>
+          <div className="auth-stat-divider" />
+          <div className="auth-stat-item">
+            <span className="stat-number">ML</span>
+            <span className="stat-label">Prédictif</span>
+          </div>
+        </div>
+
         <div className="auth-features">
           <div className="auth-feature-item">
             <div className="auth-feature-icon">👥</div>
@@ -72,7 +135,7 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Form side */}
+      {/* Formulaire (droite) */}
       <div className="auth-form-side">
         <div className="auth-card">
           <div className="auth-card-header">
@@ -107,9 +170,7 @@ const Login = () => {
             </div>
 
             {error && (
-              <div className="error-message">
-                ⚠️ {error}
-              </div>
+              <div className="error-message">⚠️ {error}</div>
             )}
 
             <button
@@ -120,11 +181,7 @@ const Login = () => {
             >
               {loading ? (
                 <>
-                  <span style={{
-                    width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)',
-                    borderTopColor: '#fff', borderRadius: '50%',
-                    display: 'inline-block', animation: 'spin 0.6s linear infinite'
-                  }}></span>
+                  <span className="btn-spinner" />
                   Connexion en cours...
                 </>
               ) : (

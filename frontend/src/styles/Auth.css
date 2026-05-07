@@ -413,3 +413,238 @@
     gap: 0;
   }
 }
+
+/* ========== PARTICULES FLOTTANTES ========== */
+.auth-particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  bottom: -20px;
+  opacity: 0;
+  animation: particleRise linear infinite;
+}
+
+@keyframes particleRise {
+  0%   { transform: translateY(0) translateX(0);    opacity: 0; }
+  10%  { opacity: 0.65; }
+  90%  { opacity: 0.3; }
+  100% { transform: translateY(-110vh) translateX(18px); opacity: 0; }
+}
+
+/* ========== GRILLE DE FOND ANIMÉE ========== */
+.auth-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(129, 140, 248, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(129, 140, 248, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+  animation: gridDrift 25s linear infinite;
+}
+
+@keyframes gridDrift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 48px 48px; }
+}
+
+/* ========== LOGO AVEC ANNEAUX PULSANTS ========== */
+.auth-logo-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 40px;
+  opacity: 0;
+  animation: slideInLeft 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0s forwards;
+}
+
+.auth-logo-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  animation: ringPulse 3s ease-in-out infinite;
+}
+
+.ring-1 {
+  width: 220px;
+  height: 220px;
+  animation-delay: 0s;
+}
+
+.ring-2 {
+  width: 310px;
+  height: 310px;
+  animation-delay: -1.5s;
+  border-color: rgba(192, 132, 252, 0.15);
+}
+
+@keyframes ringPulse {
+  0%, 100% { transform: scale(1);    opacity: 0.6; }
+  50%       { transform: scale(1.05); opacity: 0.2; }
+}
+
+/* ========== ENTRÉES ANIMÉES BRANDING ========== */
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.branding-title {
+  opacity: 0;
+  animation: slideInLeft 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
+}
+
+.branding-desc {
+  opacity: 0;
+  animation: slideInLeft 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0.38s forwards;
+}
+
+/* ========== SECTION STATS ========== */
+.auth-stats {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+  padding: 14px 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  opacity: 0;
+  animation: slideInLeft 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0.55s forwards;
+}
+
+.auth-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+}
+
+.stat-number {
+  font-size: 20px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #818cf8, #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: numberPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 1s both;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.auth-stat-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+@keyframes numberPop {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+/* ========== FEATURE ITEMS — ENTRÉE DÉCALÉE ========== */
+.auth-feature-item {
+  opacity: 0;
+  animation: featureAppear 0.5s ease forwards;
+  transition: background 0.2s ease;
+}
+
+.auth-feature-item:nth-child(1) { animation-delay: 0.7s; }
+.auth-feature-item:nth-child(2) { animation-delay: 0.85s; }
+.auth-feature-item:nth-child(3) { animation-delay: 1.0s; }
+.auth-feature-item:nth-child(4) { animation-delay: 1.15s; }
+
+@keyframes featureAppear {
+  from { opacity: 0; transform: translateX(-18px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.auth-feature-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding-left: 6px;
+}
+
+.auth-feature-item:hover .auth-feature-icon {
+  background: rgba(129, 140, 248, 0.2);
+  transform: scale(1.12) rotate(6deg);
+  transition: all 0.25s ease;
+}
+
+/* ========== ICÔNE VERROU — PULSATION ========== */
+.auth-card-icon {
+  animation: iconPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% { box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35); transform: scale(1); }
+  50%       { box-shadow: 0 8px 32px rgba(99, 102, 241, 0.7), 0 0 0 8px rgba(99, 102, 241, 0.1); transform: scale(1.06); }
+}
+
+/* ========== CARTE — LUEUR ANIMÉE ========== */
+.auth-card {
+  animation: cardEntrance 0.6s cubic-bezier(0.4, 0, 0.2, 1), cardGlow 4s ease-in-out 0.6s infinite;
+}
+
+@keyframes cardGlow {
+  0%, 100% { box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5); }
+  50%       { box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 50px rgba(99, 102, 241, 0.12); }
+}
+
+/* ========== BOUTON — EFFET SHIMMER ========== */
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+  animation: btnShimmer 3s ease-in-out infinite;
+}
+
+.btn-primary:disabled::after { display: none; }
+
+@keyframes btnShimmer {
+  0%      { left: -100%; }
+  40%, 100% { left: 150%; }
+}
+
+/* ========== SPINNER CONNEXION ========== */
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spinAnim 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spinAnim {
+  to { transform: rotate(360deg); }
+}

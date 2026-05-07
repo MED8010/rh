@@ -101,8 +101,15 @@ const TopNavbar = () => {
       </div>
 
       <div className="top-navbar-right">
-        <button className="nav-action-btn" onClick={toggleDarkMode} title="Toggle Theme">
-          {isDarkMode ? '☀️' : '🌙'}
+        <button
+          className="nav-action-btn theme-toggle-btn"
+          onClick={toggleDarkMode}
+          title="Toggle Theme"
+          style={{ fontSize: 18 }}
+        >
+          <span className="theme-icon" key={isDarkMode ? 'sun' : 'moon'}>
+            {isDarkMode ? '☀️' : '🌙'}
+          </span>
         </button>
 
         <div className="nav-action-btn notification-btn" onClick={() => navigate('/notifications')} title="Notifications">
