@@ -19,12 +19,12 @@ const PointeusesPage = () => {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (force = false) => {
     try {
       setLoading(true);
       const [statusRes, devicesRes, logsRes] = await Promise.all([
         apiClient.get('/biometric/status'),
-        apiClient.get('/biometric/devices'),
+        apiClient.get(`/biometric/devices?forceLive=${force}`),
         apiClient.get('/biometric/logs')
       ]);
       setIsSyncActive(statusRes.data.active);
@@ -46,11 +46,11 @@ const PointeusesPage = () => {
       
       let detailText = summary ? ` (${summary.success} succès, ${summary.failed} échecs)` : '';
       setMessage({ type: 'success', text: msg + detailText });
-      loadData();
+      loadData(false); // Fetch the newly updated cache
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Erreur lors de la synchronisation.';
       setMessage({ type: 'error', text: errorMsg });
-      loadData();
+      loadData(false);
     } finally {
       setSyncing(false);
       setTimeout(() => setMessage(null), 10000);
@@ -93,7 +93,7 @@ const PointeusesPage = () => {
       setSyncing(true);
       await apiClient.delete(`/biometric/devices/${id}`);
       setMessage({ type: 'success', text: 'Pointeuse supprimée avec succès.' });
-      loadData();
+      loadData(false);
     } catch (error) {
       setMessage({ type: 'error', text: 'Erreur lors de la suppression.' });
     } finally {
@@ -113,7 +113,7 @@ const PointeusesPage = () => {
         setMessage({ type: 'success', text: 'Pointeuse ajoutée.' });
       }
       setShowModal(false);
-      loadData();
+      loadData(true); // Check new device connection
     } catch (error) {
       const msg = error.response?.data?.message || 'Erreur lors de la sauvegarde.';
       setMessage({ type: 'error', text: msg });
@@ -157,7 +157,7 @@ const PointeusesPage = () => {
         </div>
       )}
 
-      {loading ? (
+      {loading && devices.length === 0 ? (
         <div className="loading"><div className="spinner"></div></div>
       ) : (
         <>
@@ -186,6 +186,13 @@ const PointeusesPage = () => {
                     <span className="value">{device.ip}</span>
                   </div>
                   
+                  <div className="info-row">
+                    <span className="label">Dernière Sync</span>
+                    <span className="value" style={{ fontSize: '12px' }}>
+                      {device.lastSync ? new Date(device.lastSync).toLocaleString('fr-FR') : 'Jamais'}
+                    </span>
+                  </div>
+                  
                   {device.online ? (
                     <div className="device-stat-grid">
                       <div className="device-stat-item">
@@ -212,7 +219,7 @@ const PointeusesPage = () => {
           <div className="chart-wrapper">
             <div className="device-header">
               <h3>Derniers Logs de Synchronisation</h3>
-              <button className="refresh-btn" onClick={loadData} title="Rafraîchir les données">🔄</button>
+              <button className="refresh-btn" onClick={() => loadData(true)} title="Forcer la vérification en direct">🔄</button>
             </div>
             <div className="logs-container">
               {logs.length === 0 ? (

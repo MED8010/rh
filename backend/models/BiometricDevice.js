@@ -22,6 +22,21 @@ const biometricDeviceSchema = new mongoose.Schema({
   },
   lastSync: {
     type: Date
+  },
+  lastOnline: {
+    type: Boolean,
+    default: false
+  },
+  lastUserCount: {
+    type: Number,
+    default: 0
+  },
+  lastLogCount: {
+    type: Number,
+    default: 0
+  },
+  lastError: {
+    type: String
   }
 }, {
   timestamps: true

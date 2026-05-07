@@ -38,12 +38,13 @@ const syncLogs = async () => {
       zkInstance = new ZKLib(deviceInfo.ip, deviceInfo.port || 4370, 10000, 4000);
       console.log(`📡 Attempting connection to ${deviceInfo.name} (${deviceInfo.ip})...`);
       
-      // Some versions of node-zklib might throw during creation or createSocket
       await zkInstance.createSocket();
       console.log(`✅ Connected to ${deviceInfo.name} (${deviceInfo.ip})`);
 
-      // Get attended logs
+      // Get users and logs before processing
+      const users = await zkInstance.getUsers();
       const logs = await zkInstance.getAttendance();
+      
       if (!logs || !logs.data) {
         throw new Error('No log data received from device');
       }
@@ -118,6 +119,15 @@ const syncLogs = async () => {
         }
       }
 
+      // Update device info in DB
+      await BiometricDevice.findByIdAndUpdate(deviceInfo._id, {
+        lastSync: new Date(),
+        lastOnline: true,
+        lastUserCount: users.data ? users.data.length : 0,
+        lastLogCount: logs.data ? logs.data.length : 0,
+        lastError: null
+      });
+
       await zkInstance.disconnect();
       console.log(`🔌 Disconnected from ${deviceInfo.name}`);
       summary.success++;
@@ -135,14 +145,18 @@ const syncLogs = async () => {
     } catch (err) {
       console.error(`❌ Raw error with ${deviceInfo.name}:`, err);
       const errorMsg = err?.message || (typeof err === 'string' ? err : 'Socket/Connection Error (Unknown)');
-      if (!err) console.error(`⚠️ ${deviceInfo.name} threw a null or undefined error!`);
       
+      // Update device error in DB
+      await BiometricDevice.findByIdAndUpdate(deviceInfo._id, {
+        lastOnline: false,
+        lastError: errorMsg
+      });
+
       summary.failed++;
       summary.deviceStatus.push({ 
         name: deviceInfo.name, 
         status: 'error', 
-        error: errorMsg,
-        details: err ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : 'null/undefined'
+        error: errorMsg
       });
 
       // Log error
@@ -152,17 +166,32 @@ const syncLogs = async () => {
         type: 'sync',
         status: 'error',
         message: `Échec de synchronisation : ${errorMsg}`,
-        details: err ? { error: errorMsg, stack: err.stack } : { error: 'Unknown' }
+        details: err ? { error: errorMsg } : { error: 'Unknown' }
       });
     }
   }
   return summary;
 };
 
-const getDeviceInfo = async () => {
+const getDeviceInfo = async (forceLive = false) => {
   const devices = await BiometricDevice.find();
-  const status = [];
+  
+  // If not forcing live check, return database info immediately
+  if (!forceLive) {
+    return devices.map(d => ({
+      _id: d._id,
+      name: d.name,
+      ip: d.ip,
+      port: d.port,
+      online: d.lastOnline,
+      userCount: d.lastUserCount,
+      logCount: d.lastLogCount,
+      lastSync: d.lastSync,
+      error: d.lastError
+    }));
+  }
 
+  const status = [];
   for (const device of devices) {
     let zkInstance = new ZKLib(device.ip, device.port || 4370, 5000, 4000);
     try {
@@ -171,36 +200,42 @@ const getDeviceInfo = async () => {
       const logs = await zkInstance.getAttendance();
       await zkInstance.disconnect();
       
+      const metrics = {
+        lastOnline: true,
+        lastUserCount: users.data ? users.data.length : 0,
+        lastLogCount: logs.data ? logs.data.length : 0,
+        lastError: null
+      };
+
+      await BiometricDevice.findByIdAndUpdate(device._id, metrics);
+
       status.push({
         _id: device._id,
         name: device.name,
         ip: device.ip,
         port: device.port,
         online: true,
-        userCount: users.data.length,
-        logCount: logs.data.length
+        userCount: metrics.lastUserCount,
+        logCount: metrics.lastLogCount,
+        lastSync: device.lastSync
       });
     } catch (err) {
       const errorMsg = err.message || (typeof err === 'string' ? err : 'Connection Error');
+      
+      await BiometricDevice.findByIdAndUpdate(device._id, {
+        lastOnline: false,
+        lastError: errorMsg
+      });
+
       status.push({
         _id: device._id,
         name: device.name,
         ip: device.ip,
         port: device.port,
         online: false,
-        error: errorMsg
+        error: errorMsg,
+        lastSync: device.lastSync
       });
-      console.error(`❌ Status check failed for ${device.ip}:`, err);
-      
-      // Log connection error if offline
-      await ZkLog.create({
-        deviceIp: device.ip,
-        deviceName: device.name,
-        type: 'status_check',
-        status: 'error',
-        message: `Appareil hors ligne : ${errorMsg}`,
-        details: { error: errorMsg }
-      }).catch(() => {}); // Silent fail for logging
     }
   }
   return status;

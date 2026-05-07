@@ -96,7 +96,8 @@ router.get('/status', verifyToken, checkRole(['admin', 'super_admin']), async (r
 // Route pour récupérer les infos en direct des pointeuses
 router.get('/devices', verifyToken, checkRole(['admin', 'super_admin']), async (req, res) => {
   try {
-    const devices = await getDeviceInfo();
+    const { forceLive } = req.query;
+    const devices = await getDeviceInfo(forceLive === 'true');
     res.json(devices);
   } catch (error) {
     res.status(500).json({ message: 'Erreur lors de la récupération des infos appareils', error: error.message });
